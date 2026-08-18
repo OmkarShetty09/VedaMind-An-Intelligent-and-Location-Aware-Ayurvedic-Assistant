@@ -20,7 +20,7 @@ from app.retrieval.filters import apply_filters
 from app.retrieval.hybrid import hybrid_search
 from app.retrieval.reranker import MIN_RELEVANCE_SCORE, rerank
 from app.security.input_sanitizer import sanitize
-from app.security.prompt_injection import SYSTEM_GUARD, wrap_user_content
+from app.security.prompt_injection import SYSTEM_GUARD
 
 from . import versioning
 from .citations import Citations
