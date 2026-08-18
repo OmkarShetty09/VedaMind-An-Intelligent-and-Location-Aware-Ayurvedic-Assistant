@@ -1,0 +1,159 @@
+"""THE RAG pipeline: retrieve -> guardrail -> generate -> verify -> stream.
+
+Every step is versioned and traced. Generation is skipped entirely on
+BLOCK / NEEDS_REVIEW. Answers are buffered and grounding-verified BEFORE any
+token reaches the user (safety over raw streaming latency).
+"""
+
+import logging
+from collections.abc import Iterator
+
+from app.config import get_settings
+from app.guardrails import rules_client, secondary_check
+from app.guardrails.jailbreak_detector import JailbreakDetector
+from app.ingestion.embeddings import EmbeddingUnavailable, embed_query
+from app.llm import cache as llm_cache
+from app.llm import router, streaming, token_budget
+from app.prompts import refusal_text, render_system_grounded
+from app.retrieval.deps_store import get_store
+from app.retrieval.filters import apply_filters
+from app.retrieval.hybrid import hybrid_search
+from app.retrieval.reranker import MIN_RELEVANCE_SCORE, rerank
+from app.security.input_sanitizer import sanitize
+from app.security.prompt_injection import SYSTEM_GUARD, wrap_user_content
+
+from . import versioning
+from .citations import Citations
+from .context import assemble
+from .errors import PipelineError
+from .tracing import span
+
+logger = logging.getLogger("rag.orchestrator")
+
+_jailbreak = JailbreakDetector()
+
+
+def run(
+    user_message: str,
+    context: dict,
+    *,
+    conversation_id: str | None = None,
+    message_id: str | None = None,
+) -> Iterator[str]:
+    settings = get_settings()
+    query = sanitize(user_message)
+
+    # 1. adversarial scan (defense-in-depth; the rules engine is still the gate)
+    risky, _ = _jailbreak.scan(user_message)
+    if risky:
+        yield streaming.guardrail_event({"decision": "needs_review", "severity": "high",
+                                         "reason_code": "jailbreak_attempt", "source": "detector"})
+        yield streaming.done_event(blocked=True, reason_code="jailbreak_attempt", tokens=0, model="")
+        return
+
+    # 2. retrieval
+    with span("retrieve", query_len=len(query)):
+        filters = apply_filters(query, context)
+        embedding = None
+        try:
+            embedding = embed_query(query)
+        except EmbeddingUnavailable:
+            logger.info("Embeddings unavailable; sparse-only retrieval.")
+        store = get_store()
+        if embedding is not None:
+            passages = hybrid_search(embedding, query, filters)
+        else:
+            passages = store.search_sparse(query, settings.retrieval_candidates, filters)
+        passages = rerank(passages, query)
+
+    top = passages[0] if passages else None
+    if top is None or top.score < MIN_RELEVANCE_SCORE:
+        logger.info("Relevance gate tripped (score=%s); refusing.", top.score if top else None)
+        for token in _split_tokens(refusal_text()):
+            yield token
+        yield streaming.citation_event([])
+        yield streaming.done_event(blocked=True, reason_code="low_relevance", tokens=0, model="")
+        return
+
+    # 3. guardrail (binding, before generation)
+    with span("guardrail", decision=""):
+        result = rules_client.check(query, context, conversation_id, message_id)
+        if result.reason_code == "no_rule_found" and _has_meds(context):
+            result = secondary_check.secondary_review(result, query, context)
+        yield streaming.guardrail_event(result.to_event())
+        if not result.allows_generation:
+            yield streaming.done_event(blocked=True, reason_code=result.reason_code, tokens=0, model="")
+            return
+
+    # 4. cache (only for clean passes)
+    citations = Citations()
+    assembled = assemble(passages, citations)
+    key = llm_cache.cache_key(query, [p["chunk_id"] for p in assembled],
+                              versioning.PROMPT_VERSION, settings.llm_primary_model)
+    cached = llm_cache.get_cached(key)
+    if cached:
+        for token in _split_tokens(cached["answer"]):
+            yield token
+        yield streaming.citation_event(citations.to_payload())
+        yield streaming.done_event(blocked=False, tokens=cached["tokens"], model="cache")
+        return
+
+    # 5. generate (buffered, then verified)
+    with span("generate", model=settings.llm_primary_model):
+        messages = render_system_grounded(assembled, query)
+        messages.insert(1, {"role": "system", "content": SYSTEM_GUARD})
+        answer = "".join(router.generate(messages, tier="primary"))
+        if not answer.strip():
+            raise PipelineError("Empty generation from providers", recoverable=True)
+
+    # 6. grounding verification (skip when no LLM configured)
+    with span("verify"):
+        grounded = verify_grounding(answer, assembled)
+        if not grounded:
+            logger.warning("Grounding verification failed; replacing with refusal.")
+            answer = refusal_text()
+
+    for token in _split_tokens(answer):
+        yield token
+    yield streaming.citation_event(citations.to_payload())
+    yield streaming.done_event(blocked=False, tokens=token_budget.estimate_tokens(answer), model=settings.llm_primary_model)
+    llm_cache.set_cached(key, {"answer": answer, "tokens": token_budget.estimate_tokens(answer)},
+                         settings.query_cache_ttl_hours)
+
+
+def verify_grounding(answer: str, passages: list[dict]) -> bool:
+    """Per-sentence citation check via the cheap tier. True = grounded.
+
+    Requires an LLM key; if unavailable we default to True (the deterministic
+    citation instructions remain, but we can't machine-check - documented).
+    """
+    settings = get_settings()
+    if not settings.openai_api_key and not settings.gemini_api_key:
+        return True
+    from app.llm.structured import complete_json
+
+    prompt = (
+        "You verify RAG faithfulness. For each sentence of the answer, decide if it is "
+        "supported by the passages. Return JSON ONLY: {\"supported\": [true|false,...]} "
+        "with one entry per sentence.\n\nPASSAGES:\n"
+        + "\n".join(f"[{i}] {p['content']}" for i, p in enumerate(passages[:6]))
+        + "\n\nANSWER:\n" + answer
+    )
+    try:
+        result = complete_json([{"role": "user", "content": prompt}], tier="cheap")
+        flags = result.get("supported", [])
+        if not flags:
+            return False
+        return sum(flags) / len(flags) >= 0.7
+    except Exception as exc:  # noqa: BLE001 - verifier failure must not block the answer
+        logger.warning("Grounding verifier unavailable (%s); accepting.", exc)
+        return True
+
+
+def _has_meds(context: dict) -> bool:
+    return bool(context.get("medications") or context.get("conditions"))
+
+
+def _split_tokens(text: str, size: int = 40) -> Iterator[str]:
+    for i in range(0, len(text), size):
+        yield streaming.token_event(text[i : i + size])

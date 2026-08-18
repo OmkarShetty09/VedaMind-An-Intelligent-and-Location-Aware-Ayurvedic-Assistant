@@ -1,0 +1,118 @@
+name: vedamind
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-vedamind}
+      POSTGRES_USER: ${POSTGRES_USER:-vedamind}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vedamind}
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vedamind}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  backend:
+    build:
+      context: ./backend
+    command: python manage.py runserver 0.0.0.0:8000
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      POSTGRES_HOST: postgres
+      RAG_SERVICE_URL: http://rag:8001
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      rag:
+        condition: service_started
+
+  celery-worker:
+    build:
+      context: ./backend
+    command: celery -A config worker -l info
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      POSTGRES_HOST: postgres
+    volumes:
+      - ./backend:/app
+      - ./data:/data
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  celery-beat:
+    build:
+      context: ./backend
+    command: celery -A config beat -l info
+    env_file: .env
+    environment:
+      DJANGO_SETTINGS_MODULE: config.settings.dev
+      POSTGRES_HOST: postgres
+    volumes:
+      - ./backend:/app
+    depends_on:
+      redis:
+        condition: service_healthy
+
+  rag:
+    build:
+      context: ./rag
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --reload
+    env_file: .env
+    environment:
+      VECTOR_STORE: ${VECTOR_STORE:-pgvector}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-vedamind}:${POSTGRES_PASSWORD:-vedamind}@postgres:5432/${POSTGRES_DB:-vedamind}
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      - ./rag:/app
+      - ./data:/data
+    ports:
+      - "8001:8001"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  frontend:
+    image: node:20-alpine
+    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    working_dir: /app
+    environment:
+      VITE_API_BASE_URL: http://localhost:8000
+    volumes:
+      - ./frontend:/app
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
+volumes:
+  pgdata:

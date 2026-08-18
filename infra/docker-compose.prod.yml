@@ -1,0 +1,114 @@
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redisdata:/data
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    command: gunicorn config.wsgi:application -c docker/gunicorn.conf.py
+    environment: &backend_env
+      DJANGO_SETTINGS_MODULE: config.settings.prod
+      DJANGO_SECRET_KEY: ${DJANGO_SECRET_KEY}
+      DEBUG: "false"
+      ALLOWED_HOSTS: ${DOMAIN}
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      CELERY_BROKER_URL: redis://redis:6379/1
+      CELERY_RESULT_BACKEND: redis://redis:6379/2
+      RAG_SERVICE_URL: http://rag:8001
+      RAG_ADMIN_TOKEN: ${RAG_ADMIN_TOKEN}
+      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+
+  celery-worker:
+    build:
+      context: ../backend
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    command: celery -A config worker --loglevel=INFO
+    environment: *backend_env
+    depends_on:
+      - backend
+
+  celery-beat:
+    build:
+      context: ../backend
+      dockerfile: docker/Dockerfile
+    restart: unless-stopped
+    command: celery -A config beat --loglevel=INFO
+    environment: *backend_env
+    depends_on:
+      - backend
+
+  rag:
+    build:
+      context: ../rag
+    restart: unless-stopped
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8001 --workers 2
+    environment:
+      ENV: prod
+      DATABASE_URL: postgres://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      REDIS_URL: redis://redis:6379/0
+      RAG_ADMIN_TOKEN: ${RAG_ADMIN_TOKEN}
+      BACKEND_GUARDRAIL_URL: http://backend:8000/api/v1/guardrails/check
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ../frontend
+    restart: unless-stopped
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8000
+    depends_on:
+      - backend
+
+  nginx:
+    image: nginx:1.27-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - ./nginx/certs:/etc/nginx/certs:ro
+      - certbot-webroot:/var/www/certbot:ro
+    depends_on:
+      - backend
+      - rag
+      - frontend
+
+volumes:
+  pgdata:
+  redisdata:
+  certbot-webroot:
