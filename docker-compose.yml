@@ -1,4 +1,4 @@
-name: vedamind
+﻿name: vedamind
 
 services:
   postgres:
@@ -31,6 +31,7 @@ services:
   backend:
     build:
       context: ./backend
+      dockerfile: docker/Dockerfile
     command: python manage.py runserver 0.0.0.0:8000
     env_file: .env
     environment:
@@ -53,6 +54,7 @@ services:
   celery-worker:
     build:
       context: ./backend
+      dockerfile: docker/Dockerfile
     command: celery -A config worker -l info
     env_file: .env
     environment:
@@ -70,6 +72,7 @@ services:
   celery-beat:
     build:
       context: ./backend
+      dockerfile: docker/Dockerfile
     command: celery -A config beat -l info
     env_file: .env
     environment:
@@ -90,6 +93,7 @@ services:
       VECTOR_STORE: ${VECTOR_STORE:-pgvector}
       DATABASE_URL: postgresql://${POSTGRES_USER:-vedamind}:${POSTGRES_PASSWORD:-vedamind}@postgres:5432/${POSTGRES_DB:-vedamind}
       REDIS_URL: redis://redis:6379/0
+      BACKEND_GUARDRAIL_URL: http://backend:8000/api/v1/guardrails/check
     volumes:
       - ./rag:/app
       - ./data:/data
@@ -103,7 +107,7 @@ services:
 
   frontend:
     image: node:20-alpine
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
+    command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     working_dir: /app
     environment:
       VITE_API_BASE_URL: http://localhost:8000
