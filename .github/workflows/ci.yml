@@ -30,12 +30,16 @@ jobs:
       - run: pip install -r requirements/dev.txt
       - run: ruff check .
       - run: |
-          export DATABASE_URL="postgres://vedamind:vedamind@localhost:5432/vedamind_test"
           python manage.py makemigrations --check --dry-run
           python manage.py migrate
           pytest
         env:
           DJANGO_SETTINGS_MODULE: config.settings.dev
+          POSTGRES_DB: vedamind_test
+          POSTGRES_USER: vedamind
+          POSTGRES_PASSWORD: vedamind
+          POSTGRES_HOST: localhost
+          POSTGRES_PORT: "5432"
 
   rag:
     runs-on: ubuntu-latest
