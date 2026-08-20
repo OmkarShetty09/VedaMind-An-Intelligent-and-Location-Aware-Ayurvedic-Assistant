@@ -37,5 +37,5 @@ def test_prose_coverage_is_complete():
 
 def test_no_verse_duplicated_across_chunks():
     chunks = chunk_document(VERSE_DOC, chunk_size=100, overlap=100)
-    verse_lines = [l for c in chunks if c["metadata"]["verse"] for l in c["content"].splitlines() if l.strip()]
+    verse_lines = [line for c in chunks if c["metadata"]["verse"] for line in c["content"].splitlines() if line.strip()]
     assert len(verse_lines) == 3, f"expected 3 verse lines, got {len(verse_lines)}"
