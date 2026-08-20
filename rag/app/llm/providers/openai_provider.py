@@ -14,11 +14,20 @@ _TIMEOUT = 60.0
 
 
 class OpenAIProvider(LLMProvider):
-    name = "openai"
+    """OpenAI-compatible chat provider (OpenAI, Groq, Ollama, etc.).
 
-    def __init__(self, api_key: str, default_model: str):
+    Any service exposing the OpenAI ``/chat/completions`` surface can be used by
+    subclassing and overriding ``name`` and ``base_url``.
+    """
+
+    name = "openai"
+    base_url = _URL
+
+    def __init__(self, api_key: str, default_model: str, base_url: str | None = None):
         self._api_key = api_key
         self.default_model = default_model
+        if base_url:
+            self.base_url = base_url
 
     def generate(self, messages, model=None) -> iter:
         model = model or self.default_model
@@ -30,9 +39,9 @@ class OpenAIProvider(LLMProvider):
         }
         headers = {"Authorization": f"Bearer {self._api_key}"}
         try:
-            with httpx.stream("POST", _URL, json=payload, headers=headers, timeout=_TIMEOUT) as resp:
+            with httpx.stream("POST", self.base_url, json=payload, headers=headers, timeout=_TIMEOUT) as resp:
                 if resp.status_code != 200:
-                    raise ProviderError(f"openai http {resp.status_code}", "openai")
+                    raise ProviderError(f"{self.name} http {resp.status_code}", self.name)
                 for line in resp.iter_lines():
                     if not line.startswith("data:"):
                         continue
@@ -47,7 +56,7 @@ class OpenAIProvider(LLMProvider):
                     if delta:
                         yield delta
         except httpx.HTTPError as exc:
-            raise ProviderError(f"openai transport: {exc}", "openai") from exc
+            raise ProviderError(f"{self.name} transport: {exc}", self.name) from exc
 
     def complete(self, messages, model=None, *, json_mode=False) -> str:
         model = model or self.default_model
@@ -61,8 +70,8 @@ class OpenAIProvider(LLMProvider):
             payload["response_format"] = {"type": "json_object"}
         headers = {"Authorization": f"Bearer {self._api_key}"}
         try:
-            resp = httpx.post(_URL, json=payload, headers=headers, timeout=_TIMEOUT)
+            resp = httpx.post(self.base_url, json=payload, headers=headers, timeout=_TIMEOUT)
             resp.raise_for_status()
             return resp.json()["choices"][0]["message"]["content"]
         except (httpx.HTTPError, KeyError, ValueError) as exc:
-            raise ProviderError(f"openai complete failed: {exc}", "openai") from exc
+            raise ProviderError(f"{self.name} complete failed: {exc}", self.name) from exc

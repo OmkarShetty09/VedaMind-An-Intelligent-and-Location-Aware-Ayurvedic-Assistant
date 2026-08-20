@@ -79,6 +79,8 @@ services:
       BACKEND_GUARDRAIL_URL: http://backend:8000/api/v1/guardrails/check
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://localhost:11434/v1}
     depends_on:
       postgres:
         condition: service_healthy

@@ -26,6 +26,8 @@ upsert("POSTGRES_PASSWORD", lambda: secrets.token_urlsafe(32))
 upsert("RAG_ADMIN_TOKEN", lambda: secrets.token_urlsafe(48))
 upsert("OPENAI_API_KEY", lambda: "")
 upsert("GEMINI_API_KEY", lambda: "")
+upsert("GROQ_API_KEY", lambda: "")
+upsert("OLLAMA_BASE_URL", lambda: "http://localhost:11434/v1")
 upsert("OPENWEATHER_API_KEY", lambda: "")
 
 if write:

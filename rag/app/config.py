@@ -28,9 +28,12 @@ class Settings(BaseSettings):
 
     openai_api_key: str = ""
     gemini_api_key: str = ""
-    llm_primary_model: str = "gpt-4o-mini"  # GPT-5.x class model goes here in prod
-    llm_fallback_model: str = "gemini-2.5-pro"
-    llm_cheap_model: str = "gpt-4o-mini"
+    groq_api_key: str = ""
+    ollama_base_url: str = "http://localhost:11434/v1"
+    llm_primary_model: str = "gemini-2.5-pro"  # primary generator
+    llm_fallback_model: str = "llama-3.3-70b-versatile"  # live fallback (Groq)
+    llm_local_fallback_model: str = "llama3.2"  # offline fallback (Ollama)
+    llm_cheap_model: str = "gemini-2.5-flash"  # extraction / summarization / judging
 
     daily_token_budget: int = 200_000
 
