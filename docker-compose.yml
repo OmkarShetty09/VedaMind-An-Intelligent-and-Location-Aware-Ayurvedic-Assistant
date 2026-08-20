@@ -110,7 +110,7 @@ services:
     command: sh -c "npm ci && npm run dev -- --host 0.0.0.0"
     working_dir: /app
     environment:
-      VITE_API_BASE_URL: http://localhost:8000
+      VITE_API_PROXY_TARGET: http://backend:8000
     volumes:
       - ./frontend:/app
     ports:
