@@ -15,7 +15,8 @@ class AssessView(APIView):
     def post(self, request):
         serializer = DoshaSubmitSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        result = score(serializer.validated_data["answers"])
+        normalized_answers = serializer.validated_data["answers"]
+        result = score(normalized_answers)
         assessment = DoshaAssessment.objects.create(
             user=request.user,
             answers=serializer.validated_data["answers"],

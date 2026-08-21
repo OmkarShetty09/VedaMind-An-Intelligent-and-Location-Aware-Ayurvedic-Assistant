@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 from .models import DoshaAssessment, DoshaProfile
 
+_DOSHA_MAP = {0: "vata", 1: "pitta", 2: "kapha"}
+
 
 class DoshaProfileSerializer(serializers.ModelSerializer):
     class Meta:
@@ -18,4 +20,17 @@ class DoshaAssessmentSerializer(serializers.ModelSerializer):
 
 
 class DoshaSubmitSerializer(serializers.Serializer):
-    answers = serializers.DictField(child=serializers.DictField(), required=True)
+    answers = serializers.DictField(required=True)
+
+    def validate_answers(self, value):
+        normalized = {}
+        for key, val in value.items():
+            if isinstance(val, dict):
+                normalized[key] = val
+            elif isinstance(val, int) and val in _DOSHA_MAP:
+                normalized[key] = {"dosha": _DOSHA_MAP[val], "value": 1}
+            else:
+                raise serializers.ValidationError(
+                    f"Answer for '{key}' must be a dict or an int (0=vata, 1=pitta, 2=kapha)."
+                )
+        return normalized

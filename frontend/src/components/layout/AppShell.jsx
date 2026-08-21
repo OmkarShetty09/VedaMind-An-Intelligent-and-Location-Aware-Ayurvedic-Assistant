@@ -1,4 +1,5 @@
 import { Outlet } from "react-router-dom";
+
 import { ErrorBoundary } from "../common/ErrorBoundary.jsx";
 import { Footer } from "./Footer.jsx";
 import { Header } from "./Header.jsx";

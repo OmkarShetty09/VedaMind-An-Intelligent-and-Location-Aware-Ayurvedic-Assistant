@@ -7,7 +7,7 @@ export const authApi = {
   refresh: () => request(endpoints.auth.refresh, { method: "POST", body: {} }),
   logout: () => request(endpoints.auth.logout, { method: "POST" }),
   me: () => request(endpoints.auth.me),
-  updateConsent: (accepted) => request(endpoints.auth.meConsent, { method: "PATCH", body: { accepted } }),
+  updateConsent: () => request(endpoints.auth.meConsent, { method: "POST", body: { disclaimer_version: "1.0" } }),
   updateLocation: (lat, lon) =>
-    request(endpoints.auth.location, { method: "PATCH", body: { lat, lon } }),
+    request(endpoints.auth.location, { method: "POST", body: { lat, lon, source: "gps" } }),
 };

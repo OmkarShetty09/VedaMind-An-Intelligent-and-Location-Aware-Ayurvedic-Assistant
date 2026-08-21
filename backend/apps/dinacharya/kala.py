@@ -37,7 +37,7 @@ def classify(local_dt: datetime, sunrise=None, sunset=None) -> Kala:
     t = local_dt.time()
     if sunrise and sunset:
         # brahma muhurta = 96 minutes before sunrise
-        muhurta_start = (sunrise - timedelta(minutes=96)).time()
+        muhurta_start = (datetime.combine(date.today(), sunrise) - timedelta(minutes=96)).time()
         if muhurta_start <= t < sunrise:
             return Kala("brahma_muhurta", t.strftime("%H:%M"))
         if sunrise <= t < _add_minutes(sunrise, 60):

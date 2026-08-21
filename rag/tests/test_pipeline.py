@@ -54,6 +54,8 @@ def test_jailbreak_trips_needs_review(monkeypatch):
 
 
 def test_generate_path_streams_then_verifies(monkeypatch):
+    from app.llm import cache as llm_cache
+
     monkeypatch.setattr(orchestrator, "embed_query", lambda q: [0.5] * 8)
     monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.9)])
     monkeypatch.setattr(orchestrator, "rerank", lambda ps, q: ps)
@@ -62,6 +64,8 @@ def test_generate_path_streams_then_verifies(monkeypatch):
     monkeypatch.setattr(orchestrator, "render_system_grounded", lambda items, user: [{"role": "system", "content": ""}])
     monkeypatch.setattr(orchestrator.router, "generate", lambda messages, tier: "The herb supports wellness [S1].")
     monkeypatch.setattr(orchestrator, "verify_grounding", lambda a, p: True)
+    monkeypatch.setattr(llm_cache, "get_cached", lambda key: None)
+    monkeypatch.setattr(llm_cache, "set_cached", lambda key, payload, ttl: None)
 
     events = collect(list(orchestrator.run("tell me about ashwagandha", {})))
     tokens = "".join(e["delta"] for e in events if e["type"] == "token")
@@ -72,14 +76,18 @@ def test_generate_path_streams_then_verifies(monkeypatch):
 
 
 def test_unverifiable_answer_replaced_with_refusal(monkeypatch):
+    from app.llm import cache as llm_cache
+
     monkeypatch.setattr(orchestrator, "embed_query", lambda q: [0.5] * 8)
     monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.9)])
     monkeypatch.setattr(orchestrator, "rerank", lambda ps, q: ps)
     monkeypatch.setattr(orchestrator, "get_store", lambda: None)
     monkeypatch.setattr(orchestrator.rules_client, "check", lambda *a: GuardrailResult("pass", "low", "no_match", []))
     monkeypatch.setattr(orchestrator, "render_system_grounded", lambda items, user: [{"role": "system", "content": ""}])
-    monkeypatch.setattr(orchestrator.router, "generate", lambda messages, tier: "A hallucinated claim [S1].")
+    monkeypatch.setattr(orchestrator.router, "generate", lambda messages, tier: iter(["A hallucinated claim [S1]."]))
     monkeypatch.setattr(orchestrator, "verify_grounding", lambda a, p: False)
+    monkeypatch.setattr(llm_cache, "get_cached", lambda key: None)
+    monkeypatch.setattr(llm_cache, "set_cached", lambda key, payload, ttl: None)
 
     events = collect(list(orchestrator.run("tell me about ashwagandha", {})))
     tokens = "".join(e["delta"] for e in events if e["type"] == "token")
