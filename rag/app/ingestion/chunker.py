@@ -17,25 +17,21 @@ def _split_blocks(content: str) -> Iterable[str]:
     current_verse: list[str] = []
     current_prose: list[str] = []
 
-    def flush():
-        if current_verse:
-            yield "\n".join(current_verse)
-        if current_prose:
-            yield "\n".join(current_prose)
-
     for line in lines:
         if _VERSE_LINE.match(line):
-            current_prose, current_verse = [], current_verse + [line]
-            # flush any pending prose
             if current_prose:
                 yield "\n".join(current_prose)
                 current_prose = []
+            current_verse.append(line)
         else:
             if current_verse:
                 yield "\n".join(current_verse)
                 current_verse = []
             current_prose.append(line)
-    yield from flush()
+    if current_verse:
+        yield "\n".join(current_verse)
+    if current_prose:
+        yield "\n".join(current_prose)
 
 
 def _prose_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:
@@ -51,17 +47,18 @@ def _prose_chunks(text: str, chunk_size: int, overlap: int) -> list[str]:
 
 
 def chunk_document(doc: dict, *, chunk_size: int = 500, overlap: int = 100) -> list[dict]:
-    """doc: {id, source, chapter, content, evidence_level, verse_range_hint}"""
+    """doc: {id, source, chapter, content, evidence_level, verse_range_hint, corpus_id, source_type}"""
     blocks = list(_split_blocks(doc["content"]))
     chunks: list[dict] = []
     group: list[str] = []
     group_tokens = 0
     verse_no = 0
+    chunk_index = 0
 
     def emit(blocks_to_group: list[str], kind: str):
-        nonlocal verse_no
+        nonlocal verse_no, chunk_index
         text = "\n".join(blocks_to_group)
-        chunk_id = f"{doc['id']}:c{len(chunks)}"
+        chunk_id = f"{doc['id']}:c{chunk_index}"
         chunks.append(
             {
                 "id": chunk_id,
@@ -71,10 +68,14 @@ def chunk_document(doc: dict, *, chunk_size: int = 500, overlap: int = 100) -> l
                     "chapter": doc.get("chapter", ""),
                     "verse": _verse_label(doc, verse_no),
                     "evidence_level": doc.get("evidence_level", "classical"),
+                    "corpus_id": doc.get("corpus_id", doc["source"]),
+                    "source_type": doc.get("source_type", "GENERAL"),
+                    "chunk_index": chunk_index,
                 },
             }
         )
         verse_no += 1
+        chunk_index += 1
 
     for block in blocks:
         n = max(1, len(block.split()))
@@ -93,18 +94,23 @@ def chunk_document(doc: dict, *, chunk_size: int = 500, overlap: int = 100) -> l
                 group = []
                 group_tokens = 0
             for pc in _prose_chunks(block, chunk_size, overlap):
+                chunk_id = f"{doc['id']}:c{chunk_index}"
                 chunks.append(
                     {
-                        "id": f"{doc['id']}:c{len(chunks)}",
+                        "id": chunk_id,
                         "content": pc,
                         "metadata": {
                             "source": doc["source"],
                             "chapter": doc.get("chapter", ""),
                             "verse": doc.get("verse_range_hint", ""),
                             "evidence_level": doc.get("evidence_level", "classical"),
+                            "corpus_id": doc.get("corpus_id", doc["source"]),
+                            "source_type": doc.get("source_type", "GENERAL"),
+                            "chunk_index": chunk_index,
                         },
                     }
                 )
+                chunk_index += 1
     if group:
         emit(group, "verse")
     return chunks

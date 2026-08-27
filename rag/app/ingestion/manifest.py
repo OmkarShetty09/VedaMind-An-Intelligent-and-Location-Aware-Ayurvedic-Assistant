@@ -11,14 +11,24 @@ def digest_of(chunks: list[dict]) -> str:
     return hashlib.sha256(blob).hexdigest()
 
 
-def write_manifest(path: Path, *, version: str, chunks: list[dict], embedding_model: str, count: int) -> dict:
+def write_manifest(
+    path: Path,
+    *,
+    version: str,
+    chunks: list[dict],
+    embedding_model: str,
+    count: int,
+    per_source: dict[str, int] | None = None,
+) -> dict:
     manifest = {
         "version": version,
         "embedding_model": embedding_model,
         "count": count,
         "digest": digest_of(chunks),
         "written_at": datetime.now(UTC).isoformat(),
+        "per_source": per_source or {},
     }
+    path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return manifest
 

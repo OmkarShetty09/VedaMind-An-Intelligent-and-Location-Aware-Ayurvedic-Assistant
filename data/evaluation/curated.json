@@ -1,0 +1,47 @@
+[
+  {
+    "id": "classical_001",
+    "query": "What does Charaka Samhita say about Rasayana therapy?",
+    "relevant_chunk_ids": ["charaka_samhita:sutrasthana-rasayana:c0", "charaka_samhita:chikitsasthana-rasayana:c0"],
+    "relevant_sources": ["charaka_samhita"],
+    "expected_source_types": ["CLASSICAL"],
+    "expected": false,
+    "category": "classical"
+  },
+  {
+    "id": "herb_001",
+    "query": "What are the properties of Ashwagandha according to Ayurveda?",
+    "relevant_chunk_ids": ["bhavaprakasha:ashwagandha:c0", "nighantus:ashwagandha:c0"],
+    "relevant_sources": ["bhavaprakasha", "nighantus"],
+    "expected_source_types": ["DRAVYAGUNA", "CLASSICAL"],
+    "expected": false,
+    "category": "herbs"
+  },
+  {
+    "id": "concept_001",
+    "query": "What is Rasayana therapy and what herbs are used?",
+    "relevant_chunk_ids": ["charaka_samhita:sutrasthana-rasayana:c0"],
+    "relevant_sources": ["charaka_samhita", "ashtanga_hridaya"],
+    "expected_source_types": ["CLASSICAL"],
+    "expected": false,
+    "category": "concepts"
+  },
+  {
+    "id": "evidence_001",
+    "query": "Is there clinical evidence that Ashwagandha helps with stress?",
+    "relevant_chunk_ids": ["clinical_evidence:ashwagandha-stress:c0"],
+    "relevant_sources": ["clinical_evidence"],
+    "expected_source_types": ["MODERN_CLINICAL"],
+    "expected": false,
+    "category": "evidence"
+  },
+  {
+    "id": "safety_001",
+    "query": "Can Ashwagandha interact with levothyroxine?",
+    "relevant_chunk_ids": ["clinical_evidence:ashwagandha-levothyroxine:c0"],
+    "relevant_sources": ["clinical_evidence"],
+    "expected_source_types": ["MODERN_CLINICAL", "SAFETY"],
+    "expected": false,
+    "category": "safety"
+  }
+]

@@ -1,0 +1,27 @@
+{
+  "corpus_id": "charaka_samhita",
+  "title": "Charak Samhita New Edition",
+  "source_type": "CLASSICAL",
+  "original_language": "Sanskrit",
+  "translation_language": "English",
+  "author": "Traditional attribution (Agnivesha, redacted by Charaka, completed by Dridhabala)",
+  "translator": "Singh R.H., Singh G., Sodhi J.S., Dixit U. (and other contributors)",
+  "edition": "New Edition (Wiki)",
+  "publisher": "Charak Samhita Research, Training and Skill Development Centre (CCRAS/NIIMH)",
+  "publication_year": 2020,
+  "source_url": "https://www.carakasamhitaonline.com/",
+  "provenance": "Academic project by CCRAS/NIIMH, Government of India. 135 contributors. DOIs assigned per chapter.",
+  "description": "Definitive online edition of Ayurveda's core treatise. Contains original Sanskrit text with diacritics, transliteration, English translation, and scholarly commentary (Tattva Vimarsha, Vidhi Vimarsha). 805 articles covering all 8 sthanas (sections).",
+  "corpus_status": "READY",
+  "doi_base": "https://doi.org/10.47468/CSNE.2020",
+  "sections": [
+    "Sutra Sthana (Fundamental Principles) - 30 chapters",
+    "Nidana Sthana (Diagnostic Principles)",
+    "Vimana Sthana (Specific Medical Principles)",
+    "Sharira Sthana (Human Being and Genesis)",
+    "Indriya Sthana (Sensorial Prognosis)",
+    "Chikitsa Sthana (Therapeutic Principles)",
+    "Kalpa Sthana (Pharmaceutical Preparations)",
+    "Siddhi Sthana (Therapeutic Procedures)"
+  ]
+}

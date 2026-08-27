@@ -5,34 +5,22 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
+echo "==> Scanning corpus sources"
+docker compose exec -T rag python -m app.ingestion status
+
+echo ""
 echo "==> Verifying corpus rights manifests"
-python - <<'PY'
-import json, sys
-from pathlib import Path
-raw = Path("data/raw")
-ok = True
-for d in sorted(raw.iterdir()):
-    if not d.is_dir():
-        continue
-    m = d / "rights_manifest.json"
-    if not m.exists():
-        print(f"MISSING manifest: {d.name}")
-        ok = False
-        continue
-    data = json.loads(m.read_text())
-    if data.get("rights") not in ("public_domain", "cc_by", "licensed"):
-        print(f"BLOCKED rights: {d.name}")
-        ok = False
-if not ok:
-    sys.exit("Corpus has unverified sources; refusing to ingest.")
-PY
+docker compose exec -T rag python -m app.ingestion validate || {
+    echo "Corpus validation failed. Fix the issues above before ingesting."
+    exit 1
+}
 
+echo ""
 echo "==> Ingesting corpus"
-docker compose exec -T rag python - <<'PY'
-from app.ingestion.indexer import run_ingestion
-from pathlib import Path
-raw = Path("data/raw")
-run_ingestion(raw, Path("data/processed/chunks"), Path("data/processed/index_manifest.json"))
-PY
+docker compose exec -T rag python -m app.ingestion ingest "$@"
 
-echo "Corpus ingested."
+echo ""
+echo "==> Post-ingestion report"
+docker compose exec -T rag python -m app.ingestion report
+
+echo "Corpus ingested successfully."

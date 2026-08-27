@@ -6,6 +6,7 @@ token reaches the user (safety over raw streaming latency).
 """
 
 import logging
+import re
 from collections.abc import Iterator
 
 from app.config import get_settings
@@ -32,6 +33,86 @@ logger = logging.getLogger("rag.orchestrator")
 
 _jailbreak = JailbreakDetector()
 
+_GREETING_RE = re.compile(
+    r"^\s*(?:hi|hello|hey|namaste|namaskar|good\s+(?:morning|afternoon|evening|night)"
+    r"|howdy|greetings|what'?s\s+up|sup|hola|yo)\s*[!.?]*\s*$",
+    re.IGNORECASE,
+)
+
+
+def _is_greeting(text: str) -> bool:
+    return bool(_GREETING_RE.match(text))
+
+
+def _greeting_response(user_message: str, context: dict) -> Iterator[str]:
+    """Generate a context-aware greeting. No RAG retrieval, no guardrails."""
+    has_profile = context.get("has_dosha_profile", False)
+    dosha = context.get("dosha", {})
+    dominant = dosha.get("dominant_dosha", "")
+    secondary = dosha.get("secondary_dosha", "")
+
+    if has_profile and dominant:
+        dosha_ref = dominant.capitalize()
+        if secondary:
+            dosha_ref += f" with secondary {secondary.capitalize()}"
+        prompt = (
+            "You are VedaMind, a personalized Ayurvedic wellness assistant. "
+            "The user has greeted you. They already have a completed Prakriti assessment: "
+            f"their constitution is {dosha_ref}. "
+            "Greet them warmly, briefly reference their existing dosha profile, "
+            "and ask how you can help them today. "
+            "Keep it to 1-2 sentences. Do not give unsolicited health advice."
+        )
+    else:
+        prompt = (
+            "You are VedaMind, a personalized Ayurvedic wellness assistant. "
+            "The user has greeted you. They do not yet have a Prakriti (dosha) profile. "
+            "Greet them warmly, briefly introduce yourself, explain that a short "
+            "Prakriti assessment is needed before you can give personalized guidance, "
+            "and ask whether they would like to begin. "
+            "Keep it to 2-3 sentences. Do not give unsolicited health advice."
+        )
+
+    messages = [
+        {"role": "system", "content": SYSTEM_GUARD},
+        {"role": "user", "content": prompt},
+    ]
+
+    try:
+        answer = "".join(router.generate(messages, tier="cheap"))
+    except Exception:  # noqa: BLE001
+        if has_profile and dominant:
+            answer = (
+                f"Hi! Good to see you again. Since you're primarily {dominant.capitalize()}"
+                + (f" with secondary {secondary.capitalize()}" if secondary else "")
+                + ", I can tailor my Ayurvedic guidance to you. What would you like help with today?"
+            )
+        else:
+            answer = (
+                "Hi! I'm VedaMind, your personalized Ayurvedic wellness assistant. "
+                "Before I give you personalized guidance, I'd like to understand your "
+                "Ayurvedic constitution through a few simple questions. Would you like to begin?"
+            )
+
+    for token in _split_tokens(answer):
+        yield token
+    yield streaming.citation_event([])
+    yield streaming.done_event(blocked=False, reason_code="greeting", tokens=0, model="cheap")
+
+
+def _empty_kb_response(user_message: str) -> Iterator[str]:
+    """Explicit response when the knowledge base has no ingested data."""
+    yield streaming.low_confidence_event()
+    msg = (
+        "I don't have sufficient classical sources to answer this question. "
+        "The Ayurvedic knowledge base has not yet been populated with source texts. "
+        "Please consult a qualified Ayurvedic practitioner for personalized guidance."
+    )
+    for token in _split_tokens(msg):
+        yield token
+    yield streaming.citation_event([])
+    yield streaming.done_event(blocked=False, reason_code="empty_kb", low_confidence=True, tokens=0, model="")
+
 
 def run(
     user_message: str,
@@ -43,7 +124,24 @@ def run(
     settings = get_settings()
     query = sanitize(user_message)
 
-    # 1. adversarial scan (defense-in-depth; the rules engine is still the gate)
+    # 0. Greeting check: short-circuit before retrieval/guardrails
+    if _is_greeting(query):
+        logger.info("Greeting detected; generating conversational response.")
+        yield from _greeting_response(user_message, context)
+        return
+
+    # 1. Empty KB check: if rag_chunks=0, explicitly say so
+    try:
+        store = get_store()
+        chunk_count = store.count_chunks()
+        if chunk_count == 0:
+            logger.info("Knowledge base empty; returning explicit empty-kb response.")
+            yield from _empty_kb_response(user_message)
+            return
+    except Exception:  # noqa: BLE001
+        pass  # if DB check fails, continue with pipeline (guardrails still work)
+
+    # 2. adversarial scan (defense-in-depth; the rules engine is still the gate)
     risky, _ = _jailbreak.scan(user_message)
     if risky:
         yield streaming.guardrail_event({"decision": "needs_review", "severity": "high",
@@ -51,7 +149,7 @@ def run(
         yield streaming.done_event(blocked=True, reason_code="jailbreak_attempt", tokens=0, model="")
         return
 
-    # 2. retrieval
+    # 3. retrieval
     with span("retrieve", query_len=len(query)):
         filters = apply_filters(query, context)
         embedding = None
@@ -59,7 +157,6 @@ def run(
             embedding = embed_query(query)
         except EmbeddingUnavailable:
             logger.info("Embeddings unavailable; sparse-only retrieval.")
-        store = get_store()
         if embedding is not None:
             passages = hybrid_search(embedding, query, filters)
         else:
@@ -76,7 +173,7 @@ def run(
         yield streaming.done_event(blocked=True, reason_code="low_relevance", low_confidence=True, tokens=0, model="")
         return
 
-    # 3. guardrail (binding, before generation)
+    # 4. guardrail (binding, before generation)
     with span("guardrail", decision=""):
         result = rules_client.check(query, context, conversation_id, message_id)
         if result.reason_code == "no_rule_found" and _has_meds(context):
@@ -86,7 +183,7 @@ def run(
             yield streaming.done_event(blocked=True, reason_code=result.reason_code, tokens=0, model="")
             return
 
-    # 4. clarifying question: if recommending herbs and user hasn't disclosed meds
+    # 5. clarifying question: if recommending herbs and user hasn't disclosed meds
     if _is_herb_recommendation(query) and not _has_meds(context) and not _has_asked_meds(context):
         yield streaming.clarifying_question_event(
             "Are you currently on any medication or have any diagnosed condition I should factor in?"
@@ -94,7 +191,7 @@ def run(
         yield streaming.done_event(blocked=False, tokens=0, model="", needs_clarification=True)
         return
 
-    # 5. cache (only for clean passes)
+    # 6. cache (only for clean passes)
     citations = Citations()
     assembled = assemble(passages, citations)
     key = llm_cache.cache_key(query, [p["chunk_id"] for p in assembled],
@@ -110,7 +207,7 @@ def run(
         yield streaming.done_event(blocked=False, tokens=cached["tokens"], model="cache")
         return
 
-    # 6. generate (buffered, then verified)
+    # 7. generate (buffered, then verified)
     with span("generate", model=settings.llm_primary_model):
         chip = _build_context_chip(context)
         if chip:
@@ -130,7 +227,7 @@ def run(
         if not answer.strip():
             raise PipelineError("Empty generation from providers", recoverable=True)
 
-    # 7. grounding verification (skip when no LLM configured)
+    # 8. grounding verification (skip when no LLM configured)
     with span("verify"):
         grounded = verify_grounding(answer, assembled)
         if not grounded:

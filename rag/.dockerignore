@@ -1,0 +1,13 @@
+__pycache__
+*.pyc
+.pytest_cache
+.ruff_cache
+.git
+.env
+*.md
+!requirements/*.txt
+tests/
+data/processed/
+data/embeddings/
+.dockerignore
+Dockerfile

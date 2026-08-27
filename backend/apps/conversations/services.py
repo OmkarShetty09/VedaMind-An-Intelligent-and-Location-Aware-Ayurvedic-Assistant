@@ -48,8 +48,10 @@ def build_context_bundle(user, recent_messages, client_location=None):
     return {
         "dosha": {
             "dominant_dosha": (profile.dominant_dosha if profile else ""),
+            "secondary_dosha": (profile.secondary_dosha if profile else ""),
             "scores": (profile.vikriti_scores if profile else {}),
         },
+        "has_dosha_profile": profile is not None,
         "medications": meds,
         "conditions": conditions,
         "pregnancy": any(c.lower() in ("pregnancy", "pregnant") for c in conditions),

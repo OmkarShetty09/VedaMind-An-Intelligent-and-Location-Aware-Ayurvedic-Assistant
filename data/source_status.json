@@ -1,0 +1,47 @@
+{
+  "last_scan": null,
+  "sources": {
+    "charaka_samhita": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    },
+    "sushruta_samhita": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    },
+    "ashtanga_hridaya": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    },
+    "bhavaprakasha": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    },
+    "nighantus": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    },
+    "clinical_evidence": {
+      "status": "NOT_AVAILABLE",
+      "rights_status": "UNKNOWN",
+      "verification_status": "NOT_VERIFIED",
+      "chunk_count": 0,
+      "last_ingested": null
+    }
+  }
+}
