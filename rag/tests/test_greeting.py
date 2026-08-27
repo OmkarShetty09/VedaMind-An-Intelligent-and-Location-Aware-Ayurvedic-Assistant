@@ -2,7 +2,7 @@
 
 import json
 
-from app.core.orchestrator import _is_greeting, _greeting_response, run
+from app.core.orchestrator import _greeting_response, _is_greeting
 
 
 def collect(events):

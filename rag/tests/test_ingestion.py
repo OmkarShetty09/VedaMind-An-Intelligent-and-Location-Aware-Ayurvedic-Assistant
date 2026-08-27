@@ -1,17 +1,13 @@
 """Tests for the ingestion pipeline: chunker, loader, verifier, manifest, indexer."""
 
 import json
-import tempfile
 from pathlib import Path
 
-import pytest
-
-
-# ---------------------------------------------------------------------------
-# Chunker tests
-# ---------------------------------------------------------------------------
-
 from app.ingestion.chunker import chunk_document
+from app.ingestion.loader import load_raw_sources
+from app.ingestion.manifest import digest_of, read_manifest, write_manifest
+from app.ingestion.metadata import build_chunk_metadata, content_hash
+from app.ingestion.verifier import get_corpus_status, verify_metadata, verify_source
 
 VERSE_DOC = {
     "id": "cs:adhyaya-1",
@@ -98,14 +94,12 @@ def test_empty_content_produces_no_chunks():
 # Verifier tests
 # ---------------------------------------------------------------------------
 
-from app.ingestion.verifier import verify_source, verify_metadata, get_corpus_status
-
 
 def test_verify_source_legacy_format(tmp_path):
     d = tmp_path / "test_src"
     d.mkdir()
     (d / "rights_manifest.json").write_text(json.dumps({"rights": "public_domain", "license": "CC-BY-4.0"}))
-    ok, msg = verify_source(d)
+    ok, _msg = verify_source(d)
     assert ok is True
 
 
@@ -117,7 +111,7 @@ def test_verify_source_extended_verified(tmp_path):
         "license": "CC-BY-4.0",
         "verification_status": "VERIFIED",
     }))
-    ok, msg = verify_source(d)
+    ok, _msg = verify_source(d)
     assert ok is True
 
 
@@ -142,14 +136,14 @@ def test_verify_metadata_valid(tmp_path):
     d = tmp_path / "test_src"
     d.mkdir()
     (d / "metadata.json").write_text(json.dumps({"corpus_id": "test", "title": "Test"}))
-    ok, msg = verify_metadata(d)
+    ok, _msg = verify_metadata(d)
     assert ok is True
 
 
 def test_verify_metadata_missing(tmp_path):
     d = tmp_path / "test_src"
     d.mkdir()
-    ok, msg = verify_metadata(d)
+    ok, _msg = verify_metadata(d)
     assert ok is False
 
 
@@ -179,8 +173,6 @@ def test_get_corpus_status_rights_unverified(tmp_path):
 # ---------------------------------------------------------------------------
 # Loader tests
 # ---------------------------------------------------------------------------
-
-from app.ingestion.loader import load_raw_sources
 
 
 def test_loader_skips_empty_dirs(tmp_path):
@@ -219,8 +211,6 @@ def test_loader_injects_metadata(tmp_path):
 # Manifest tests
 # ---------------------------------------------------------------------------
 
-from app.ingestion.manifest import write_manifest, read_manifest, digest_of
-
 
 def test_write_and_read_manifest(tmp_path):
     chunks = [{"content": "hello"}, {"content": "world"}]
@@ -249,8 +239,6 @@ def test_read_manifest_missing():
 # ---------------------------------------------------------------------------
 # Metadata builder tests
 # ---------------------------------------------------------------------------
-
-from app.ingestion.metadata import build_chunk_metadata, content_hash
 
 
 def test_build_chunk_metadata():

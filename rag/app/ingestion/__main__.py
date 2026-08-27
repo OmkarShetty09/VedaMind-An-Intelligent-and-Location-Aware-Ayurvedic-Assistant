@@ -7,7 +7,6 @@ Usage:
 """
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -96,17 +95,17 @@ def cmd_report(args):
     if manifest_path.exists():
         from .manifest import read_manifest
         m = read_manifest(manifest_path)
-        print(f"\n[MANIFEST]")
+        print("\n[MANIFEST]")
         print(f"  Embedding model: {m.get('embedding_model', 'unknown')}")
         print(f"  Total chunks: {m.get('count', 0)}")
         print(f"  Written: {m.get('written_at', 'unknown')}")
         per_source = m.get("per_source", {})
         if per_source:
-            print(f"  Per source:")
+            print("  Per source:")
             for src, cnt in sorted(per_source.items()):
                 print(f"    {src}: {cnt}")
     else:
-        print(f"\n[MANIFEST] Not found (no ingestion performed yet)")
+        print("\n[MANIFEST] Not found (no ingestion performed yet)")
 
     print(f"\n{'='*60}")
 

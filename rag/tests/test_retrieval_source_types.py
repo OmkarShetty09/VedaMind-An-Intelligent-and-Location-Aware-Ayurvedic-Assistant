@@ -22,7 +22,6 @@ def collect(events):
 
 def test_empty_kb_returns_explicit_message(monkeypatch):
     """When rag_chunks=0, orchestrator returns explicit empty-kb message."""
-    from app.retrieval.stores import pgvector_store
 
     class FakeStore:
         def count_chunks(self):
