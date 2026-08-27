@@ -190,9 +190,8 @@ def _has_asked_meds(context: dict) -> bool:
 
 def _is_herb_recommendation(query: str) -> bool:
     herb_keywords = [
-        "recommend", "suggest", "take", "use", "try", "herb", "remedy",
-        "supplement", "formulation", "ashwagandha", "turmeric", "triphala",
-        "churna", "lehya", "asava", "arishta",
+        "recommend", "suggest", "should i take", "should i use",
+        "herb", "remedy", "supplement", "formulation",
     ]
     q = query.lower()
     return any(kw in q for kw in herb_keywords)
