@@ -8,15 +8,123 @@ import { clearResult, loadProfile, submitQuiz } from "../store/doshaSlice.js";
 import { store } from "../store/index.js";
 
 const STEPS = [
-  { key: "frame", q: "My body frame is...", options: ["Lean and light", "Medium and balanced", "Large and sturdy"] },
-  { key: "digestion", q: "My digestion is usually...", options: ["Irregular / sensitive", "Moderate", "Slow and steady"] },
-  { key: "energy", q: "My energy pattern is...", options: ["Bursts, then tired", "Steady through the day", "Slow to start, steady"] },
-  { key: "sleep", q: "My sleep is...", options: ["Light / interrupted", "Moderate", "Deep and long"] },
-  { key: "skin", q: "My skin tends to be...", options: ["Dry", "Sensitive / warm", "Oily / cool"] },
-  { key: "appetite", q: "My appetite is...", options: ["Variable, I forget to eat", "Strong, I get irritable if hungry", "Steady, I can skip meals"] },
-  { key: "temperature", q: "I prefer...", options: ["Warm environments", "Cool environments", "Neither extremes"] },
-  { key: "stress", q: "Under stress I become...", options: ["Anxious and scattered", "Irritable and sharp", "Slow and withdrawn"] },
+  {
+    section: "Physical Characteristics",
+    questions: [
+      {
+        key: "body_frame",
+        q: "Body Frame & Build",
+        options: [
+          "Slender, light, thin frame; hard to gain weight.",
+          "Medium, athletic build; moderate muscle tone; can gain/lose weight easily.",
+          "Solid, large, broad frame; sturdy build; gains weight easily, loses it slowly.",
+        ],
+      },
+      {
+        key: "skin_type",
+        q: "Skin Type",
+        options: [
+          "Dry, rough, thin, cool to the touch, prone to cracking.",
+          "Warm, reddish, oily in the T-zone, prone to inflammation, acne, or freckles.",
+          "Thick, smooth, moist, soft, cool, oily skin.",
+        ],
+      },
+      {
+        key: "hair_texture",
+        q: "Hair Texture",
+        options: [
+          "Dry, thin, coarse, curly, or prone to split ends.",
+          "Fine, straight, soft, early graying or thinning/balding.",
+          "Thick, dark, wavy, lustrous, and strong.",
+        ],
+      },
+      {
+        key: "joints_mobility",
+        q: "Joints & Mobility",
+        options: [
+          "Small joints; prominent bones; joints tend to crack or pop.",
+          "Flexible, medium-sized joints; warm and comfortable.",
+          "Large, sturdy, well-padded joints with high flexibility.",
+        ],
+      },
+    ],
+  },
+  {
+    section: "Physiology & Metabolism",
+    questions: [
+      {
+        key: "appetite_digestion",
+        q: "Appetite & Digestion",
+        options: [
+          "Irregular, variable appetite; prone to gas, bloating, or constipation.",
+          "Strong, intense appetite; gets irritable if meals are delayed; prone to acid reflux.",
+          "Steady, slow appetite; can skip meals easily without discomfort; slow digestion.",
+        ],
+      },
+      {
+        key: "climate_preference",
+        q: "Weather & Climate Preference",
+        options: [
+          "Dislikes cold and wind; loves warm, humid climates.",
+          "Dislikes heat and bright sun; prefers cool, well-ventilated places.",
+          "Dislikes cold and damp/rainy weather; prefers warm, dry environments.",
+        ],
+      },
+      {
+        key: "sleep_quality",
+        q: "Sleep Quality",
+        options: [
+          "Light sleeper, restless, easily awakened, prone to insomnia.",
+          "Sound, moderate sleeper (6\u20138 hours); can wake up easily if needed.",
+          "Deep, heavy sleeper (8+ hours); finds it hard to wake up in the morning.",
+        ],
+      },
+      {
+        key: "energy_stamina",
+        q: "Energy & Stamina",
+        options: [
+          "Bursts of high energy followed by sudden fatigue; low endurance.",
+          "High, focused energy; strong stamina; driven to accomplish goals.",
+          "Steady, reliable energy; high endurance, but takes time to get started.",
+        ],
+      },
+    ],
+  },
+  {
+    section: "Mind, Emotions & Behavior",
+    questions: [
+      {
+        key: "learning_memory",
+        q: "Learning & Memory Style",
+        options: [
+          "Learns very quickly, but forgets quickly too.",
+          "Medium-paced learner; distinct understanding; remembers what is useful.",
+          "Learns slowly, but retains information for a long time (strong long-term memory).",
+        ],
+      },
+      {
+        key: "stress_reaction",
+        q: "Reaction to Stress",
+        options: [
+          "Anxiety, worry, fear, overthinking, agitation.",
+          "Anger, impatience, frustration, irritability, criticism.",
+          "Stubbornness, withdrawal, complacency, emotional eating.",
+        ],
+      },
+      {
+        key: "spending_habits",
+        q: "Spending & Money Habits",
+        options: [
+          "Impulsive spender; spends money quickly on short-term wants.",
+          "Spends money intentionally on quality, luxury, or practical items.",
+          "Saver by nature; accumulates wealth and hates spending unnecessarily.",
+        ],
+      },
+    ],
+  },
 ];
+
+const ALL_QUESTIONS = STEPS.flatMap((s) => s.questions);
 
 export function DoshaAssessmentPage() {
   const dispatch = useDispatch();
@@ -72,24 +180,22 @@ export function DoshaAssessmentPage() {
   }
 
   if (result?.results || (profile?.dominant_dosha && fromChat)) {
+    const primary = result?.results?.primary || profile?.dominant_dosha;
+    const secondary = result?.results?.secondary_dosha || result?.results?.secondary || profile?.secondary_dosha || "";
+    const scores = result?.results?.scores || profile?.scores || {};
+    const percentages = result?.results?.percentages || {};
+    const classification = result?.results?.classification || "single";
+
     return (
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-text">Your Dosha Profile</h1>
           <p className="mt-1 text-sm text-text-muted">
-            Based on your answers, you are a{" "}
-            <strong className="text-brand">
-              {result?.results?.primary || profile?.dominant_dosha}
-            </strong>
-            {result?.results?.secondary ? ` with secondary ${result.results.secondary}` : ""} type.
+            A short, self-reported snapshot. This is educational, not diagnostic.
           </p>
         </div>
         <DoshaResultChart
-          result={{
-            primary: result?.results?.primary || profile?.dominant_dosha,
-            secondary: result?.results?.secondary,
-            scores: result?.results?.scores || profile?.scores || {},
-          }}
+          result={{ primary, secondary, scores, percentages, classification }}
         />
         {fromChat && (
           <button
@@ -106,8 +212,9 @@ export function DoshaAssessmentPage() {
     );
   }
 
-  const current = STEPS[step];
-  const progress = ((step + 1) / STEPS.length) * 100;
+  const current = ALL_QUESTIONS[step];
+  const currentSection = STEPS.find((s) => s.questions.some((q) => q.key === current.key));
+  const progress = ((step + 1) / ALL_QUESTIONS.length) * 100;
   const answered = Object.keys(answers).length;
 
   const selectOption = (key, idx) => {
@@ -135,9 +242,9 @@ export function DoshaAssessmentPage() {
       <div className="rounded-xl border border-line bg-surface p-4">
         <div className="mb-4 flex items-center justify-between text-xs text-text-muted">
           <span>
-            Question {step + 1} of {STEPS.length}
+            Question {step + 1} of {ALL_QUESTIONS.length}
           </span>
-          <span>{answered} answered</span>
+          <span>{currentSection?.section}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-brand-light">
           <div
@@ -174,17 +281,17 @@ export function DoshaAssessmentPage() {
         >
           Back
         </button>
-        {step === STEPS.length - 1 ? (
+        {step === ALL_QUESTIONS.length - 1 ? (
           <button
             onClick={handleSubmit}
-            disabled={answered < STEPS.length || submitting}
+            disabled={answered < ALL_QUESTIONS.length || submitting}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors disabled:opacity-50"
           >
             {submitting ? "Computing..." : "See my dosha"}
           </button>
         ) : (
           <button
-            onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
+            onClick={() => setStep((s) => Math.min(ALL_QUESTIONS.length - 1, s + 1))}
             disabled={!answers[current.key]}
             className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors disabled:opacity-50"
           >

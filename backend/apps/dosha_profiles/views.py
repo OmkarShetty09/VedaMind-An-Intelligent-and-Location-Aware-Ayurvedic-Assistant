@@ -25,7 +25,8 @@ class AssessView(APIView):
         profile, _ = DoshaProfile.objects.get_or_create(user=request.user)
         profile.vikriti_scores = result["scores"]
         profile.dominant_dosha = result["dominant_dosha"]
-        profile.save(update_fields=["vikriti_scores", "dominant_dosha", "updated_at"])
+        profile.secondary_dosha = result.get("secondary_dosha", "")
+        profile.save(update_fields=["vikriti_scores", "dominant_dosha", "secondary_dosha", "updated_at"])
         return Response(DoshaAssessmentSerializer(assessment).data)
 
 

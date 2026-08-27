@@ -5,7 +5,9 @@ import { endpoints } from "../api/endpoints.js";
 import {
   appendAssistantChunk,
   appendUserMessage,
+  clearRetryState,
   finishAssistantMessage,
+  setRetryState,
   setSession,
   setStreamError,
   startStream,
@@ -16,7 +18,7 @@ import { useSSE } from "./useSSE.js";
 export function useChat() {
   const dispatch = useDispatch();
   const { connect, streaming } = useSSE();
-  const { messages, activeSessionId, error } = useSelector((s) => s.chat);
+  const { messages, activeSessionId, error, retryState } = useSelector((s) => s.chat);
   const { coords, weather } = useSelector((s) => s.location);
   const { profile } = useSelector((s) => s.dosha);
 
@@ -46,7 +48,10 @@ export function useChat() {
         endpoints.chat.chat,
         { message: text, session_id: activeSessionId, location: locationContext },
         {
-          onToken: (delta) => dispatch(appendAssistantChunk(delta)),
+          onToken: (delta) => {
+            dispatch(clearRetryState());
+            dispatch(appendAssistantChunk(delta));
+          },
           onGuardrail: (decision) => {
             dispatch(recordDecision(decision));
             onGuardrail?.(decision);
@@ -71,6 +76,7 @@ export function useChat() {
             }));
           },
           onError: (err) => dispatch(setStreamError(err.message || "Stream failed")),
+          onRetry: (info) => dispatch(setRetryState(info)),
         }
       );
     },
@@ -79,5 +85,5 @@ export function useChat() {
 
   const selectSession = useCallback((id) => dispatch(setSession(id)), [dispatch]);
 
-  return { messages, streaming, error, send, selectSession };
+  return { messages, streaming, error, retryState, send, selectSession };
 }

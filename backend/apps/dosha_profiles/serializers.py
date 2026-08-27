@@ -8,7 +8,7 @@ _DOSHA_MAP = {0: "vata", 1: "pitta", 2: "kapha"}
 class DoshaProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = DoshaProfile
-        fields = ["id", "prakriti_scores", "vikriti_scores", "dominant_dosha", "updated_at"]
+        fields = ["id", "prakriti_scores", "vikriti_scores", "dominant_dosha", "secondary_dosha", "updated_at"]
         read_only_fields = ["id", "updated_at"]
 
 

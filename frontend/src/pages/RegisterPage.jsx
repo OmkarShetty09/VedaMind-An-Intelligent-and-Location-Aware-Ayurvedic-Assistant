@@ -8,7 +8,7 @@ import { useAuthContext } from "../contexts/AuthContext.jsx";
 export function RegisterPage() {
   const { signUp, error } = useAuthContext();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: "", password: "", display_name: "" });
+  const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -33,8 +33,8 @@ export function RegisterPage() {
         />
         <Input
           label="Display name"
-          value={form.display_name}
-          onChange={(e) => setForm({ ...form, display_name: e.target.value })}
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
         />
         <Input
           label="Password"

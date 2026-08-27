@@ -14,6 +14,7 @@ class DoshaProfile(models.Model):
     prakriti_scores = models.JSONField(default=dict)  # {vata: 0..100, pitta: .., kapha: ..}
     vikriti_scores = models.JSONField(default=dict)
     dominant_dosha = models.CharField(max_length=10, blank=True)
+    secondary_dosha = models.CharField(max_length=10, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

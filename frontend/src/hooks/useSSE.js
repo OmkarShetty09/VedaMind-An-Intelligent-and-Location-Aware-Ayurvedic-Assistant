@@ -5,7 +5,7 @@ import { openSSE } from "../utils/sse.js";
 /**
  * Returns { connect, abort, streaming }. connect(url, body, handlers).
  * handlers: { onToken, onGuardrail, onCitation, onContextChip, onLowConfidence,
- *             onClarifyingQuestion, onDone, onError }
+ *             onClarifyingQuestion, onDone, onError, onRetry }
  */
 export function useSSE() {
   const [streaming, setStreaming] = useState(false);
@@ -20,6 +20,7 @@ export function useSSE() {
       await openSSE(url, {
         body,
         signal: controller.signal,
+        onRetry: handlers.onRetry,
         onEvent: ({ event, data }) => {
           switch (event) {
             case "token":

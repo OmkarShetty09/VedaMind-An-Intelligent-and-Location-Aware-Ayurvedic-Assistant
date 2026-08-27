@@ -112,7 +112,7 @@ REST_FRAMEWORK = {
     "DEFAULT_THROTTLE_RATES": {
         "anon": "10/min",
         "authed": "60/min",
-        "chat": "20/min",
+        "chat": "60/min",
         "guardrail": "30/min",
     },
     "DEFAULT_PAGINATION_CLASS": "apps.core.pagination.CursorPagination",

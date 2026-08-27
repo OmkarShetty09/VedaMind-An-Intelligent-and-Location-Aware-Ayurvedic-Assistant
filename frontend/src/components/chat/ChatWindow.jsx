@@ -8,7 +8,7 @@ import { MessageInput } from "./MessageInput.jsx";
 import { RetrievalProgress } from "./RetrievalProgress.jsx";
 
 export function ChatWindow() {
-  const { messages, streaming, error, send } = useChat();
+  const { messages, streaming, error, retryState, send } = useChat();
   const bottomRef = useRef(null);
   const [quickReply, setQuickReply] = useState(null);
 
@@ -67,7 +67,12 @@ export function ChatWindow() {
           </div>
         </div>
       )}
-      <MessageInput onSend={send} disabled={streaming} />
+      {retryState && (
+        <div className="border-t border-line bg-amber-50 px-4 py-2 text-xs text-amber-700">
+          Rate limited — retrying in {retryState.nextRetryIn}s (attempt {retryState.attempt}/3)…
+        </div>
+      )}
+      <MessageInput onSend={send} disabled={streaming || !!retryState} />
       <div className="border-t border-line px-4 py-2">
         <DisclaimerInline />
       </div>

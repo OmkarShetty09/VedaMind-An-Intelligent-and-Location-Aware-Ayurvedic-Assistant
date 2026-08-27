@@ -36,7 +36,10 @@ const doshaSlice = createSlice({
         if (action.payload?.results) {
           state.profile = {
             dominant_dosha: action.payload.results.dominant_dosha,
+            secondary_dosha: action.payload.results.secondary_dosha || "",
             scores: action.payload.results.scores,
+            percentages: action.payload.results.percentages,
+            classification: action.payload.results.classification,
           };
         }
       })

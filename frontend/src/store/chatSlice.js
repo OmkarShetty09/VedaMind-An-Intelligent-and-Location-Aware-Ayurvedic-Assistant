@@ -17,6 +17,7 @@ const chatSlice = createSlice({
     messages: [],
     streaming: false,
     error: null,
+    retryState: null,
   },
   reducers: {
     setSession(state, action) {
@@ -25,6 +26,7 @@ const chatSlice = createSlice({
     startStream(state) {
       state.streaming = true;
       state.error = null;
+      state.retryState = null;
     },
     appendUserMessage(state, action) {
       state.messages.push({ role: "user", content: action.payload });
@@ -54,6 +56,13 @@ const chatSlice = createSlice({
     setStreamError(state, action) {
       state.error = action.payload;
       state.streaming = false;
+      state.retryState = null;
+    },
+    setRetryState(state, action) {
+      state.retryState = action.payload;
+    },
+    clearRetryState(state) {
+      state.retryState = null;
     },
     clearMessages(state) {
       state.messages = [];
@@ -86,6 +95,8 @@ export const {
   appendAssistantChunk,
   finishAssistantMessage,
   setStreamError,
+  setRetryState,
+  clearRetryState,
   clearMessages,
 } = chatSlice.actions;
 export default chatSlice.reducer;
