@@ -37,7 +37,7 @@ class PgVectorStore(VectorStore):
 
     def search_dense(self, embedding, top_k, filters=None) -> list[Passage]:
         vec = "[" + ",".join(f"{v:.6f}" for v in embedding) + "]"
-        where = _where_clause(filters)
+        where, params = _where_clause(filters)
         sql = f"""
             SELECT id, content, metadata, 1 - (embedding <=> %s::vector) AS score
             FROM rag_chunks {where}
@@ -45,11 +45,11 @@ class PgVectorStore(VectorStore):
             LIMIT %s
         """
         with self._connect() as conn:
-            rows = conn.execute(sql, (vec, vec, top_k)).fetchall()
+            rows = conn.execute(sql, (vec, *params, vec, top_k)).fetchall()
         return [Passage(chunk_id=r[0], text=r[1], metadata=dict(r[2]), score=float(r[3])) for r in rows]
 
     def search_sparse(self, query, top_k, filters=None) -> list[Passage]:
-        where = _where_clause(filters)  # "" or "WHERE <cond>"
+        where, params = _where_clause(filters)
         cond = "fts @@ q"
         if where:
             cond += " AND " + where[len("WHERE "):]
@@ -61,7 +61,7 @@ class PgVectorStore(VectorStore):
             LIMIT %s
         """
         with self._connect() as conn:
-            rows = conn.execute(sql, (query, top_k)).fetchall()
+            rows = conn.execute(sql, (query, *params, top_k)).fetchall()
         return [Passage(chunk_id=r[0], text=r[1], metadata=dict(r[2]), score=float(r[3] or 0.0)) for r in rows]
 
     def upsert(self, chunks, embeddings) -> int:
@@ -86,18 +86,22 @@ class PgVectorStore(VectorStore):
         return n
 
 
-def _where_clause(filters: dict | None) -> str:
+def _where_clause(filters: dict | None) -> tuple[str, list]:
     if not filters:
-        return ""
+        return "", []
     conds = []
+    params = []
     if filters.get("source"):
-        conds.append(f"metadata->>'source' = '{filters['source']}'")
+        conds.append("metadata->>'source' = %s")
+        params.append(filters["source"])
     if filters.get("evidence_level"):
-        conds.append(f"metadata->>'evidence_level' = '{filters['evidence_level']}'")
-    return "WHERE " + " AND ".join(conds) if conds else ""
+        conds.append("metadata->>'evidence_level' = %s")
+        params.append(filters["evidence_level"])
+    clause = "WHERE " + " AND ".join(conds) if conds else ""
+    return clause, params
 
 
 def get_pgvector_store() -> PgVectorStore:
-    from app.deps_store import _pgvector_store
+    from app.retrieval.deps_store import _store
 
-    return _pgvector_store()
+    return _store()

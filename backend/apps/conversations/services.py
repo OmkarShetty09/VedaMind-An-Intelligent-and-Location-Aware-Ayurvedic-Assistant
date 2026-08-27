@@ -7,13 +7,15 @@ injection cannot alter guardrail context.
 from apps.weather.models import GeoLocation
 
 
-def build_context_bundle(user, recent_messages) -> dict:
+def build_context_bundle(user, recent_messages, client_location=None):
     profile = getattr(user, "dosha_profile", None)
     meds = list(user.medications.filter(active=True).values_list("free_text", flat=True))
     conditions = list(user.conditions.filter(active=True).values_list("condition", flat=True))
     geo = GeoLocation.objects.filter(user=user).first()
 
     weather = {}
+    location_data = None
+
     if geo is not None:
         from apps.weather.cache import get_weather
 
@@ -25,6 +27,23 @@ def build_context_bundle(user, recent_messages) -> dict:
             "condition": ((current.get("weather") or [{}])[0]).get("description", ""),
             "source": result["source"],
         }
+        location_data = {"lat": geo.lat, "lon": geo.lon, "source": geo.source, "accuracy": geo.accuracy}
+
+    if client_location:
+        if not location_data and client_location.get("lat") and client_location.get("lon"):
+            location_data = {"lat": client_location["lat"], "lon": client_location["lon"], "source": "client"}
+        if client_location.get("current_weather"):
+            cw = client_location["current_weather"]
+            weather = {
+                "temp_c": cw.get("temp_c", weather.get("temp_c")),
+                "humidity": cw.get("humidity", weather.get("humidity")),
+                "condition": cw.get("condition", weather.get("condition")),
+                "source": weather.get("source", "client"),
+            }
+        if client_location.get("season"):
+            weather["season"] = client_location["season"]
+
+    season = _infer_season(weather)
 
     return {
         "dosha": {
@@ -35,11 +54,25 @@ def build_context_bundle(user, recent_messages) -> dict:
         "conditions": conditions,
         "pregnancy": any(c.lower() in ("pregnancy", "pregnant") for c in conditions),
         "pediatric": any("child" in c.lower() or "pediatric" in c.lower() for c in conditions),
-        "location": (
-            {"lat": geo.lat, "lon": geo.lon, "source": geo.source, "accuracy": geo.accuracy}
-            if geo
-            else None
-        ),
+        "location": location_data,
         "weather": weather,
+        "season": season,
         "history": [{"role": m.role, "content": m.content} for m in recent_messages],
     }
+
+
+def _infer_season(weather):
+    season = weather.get("season")
+    if season:
+        return season
+    import datetime
+    month = datetime.date.today().month
+    if month in (6, 7, 8, 9):
+        return "monsoon"
+    if month in (10, 11):
+        return "autumn"
+    if month in (12, 1, 2):
+        return "winter"
+    if month in (3, 4, 5):
+        return "spring"
+    return "summer"

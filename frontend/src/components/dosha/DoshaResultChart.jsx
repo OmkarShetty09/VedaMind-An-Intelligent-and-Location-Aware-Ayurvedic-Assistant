@@ -2,11 +2,12 @@ import { DoshaScaleBar } from "./DoshaScaleBar.jsx";
 
 export function DoshaResultChart({ result }) {
   if (!result?.scores) return null;
+  const primary = result.primary || result.dominant_dosha;
   return (
     <div className="rounded-2xl border border-line bg-surface p-6">
       <h3 className="font-semibold text-text">Your dosha profile</h3>
       <p className="mt-1 text-sm text-text-muted">
-        Primary: <strong className="text-brand">{result.primary}</strong>
+        Primary: <strong className="text-brand">{primary}</strong>
         {result.secondary ? `, secondary: ${result.secondary}` : ""}
       </p>
       <div className="mt-4 space-y-3">

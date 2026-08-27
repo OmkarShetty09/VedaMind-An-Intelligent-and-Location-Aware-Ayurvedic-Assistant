@@ -18,9 +18,17 @@ class ConversationSerializer(serializers.ModelSerializer):
         fields = ["id", "title", "created_at", "updated_at"]
 
 
+class LocationPayloadSerializer(serializers.Serializer):
+    lat = serializers.FloatField(required=False)
+    lon = serializers.FloatField(required=False)
+    season = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    current_weather = serializers.DictField(required=False)
+
+
 class ChatRequestSerializer(serializers.Serializer):
     session_id = serializers.UUIDField(required=False)
     message = serializers.CharField(max_length=8000, allow_blank=False)
+    location = LocationPayloadSerializer(required=False)
 
     def validate_message(self, value):
         if not value.strip():

@@ -23,6 +23,18 @@ def citation_event(sources: list[dict]) -> str:
     return emit({"type": "citation", "sources": sources})
 
 
+def context_chip_event(chip: str) -> str:
+    return emit({"type": "context_chip", "chip": chip})
+
+
+def low_confidence_event() -> str:
+    return emit({"type": "low_confidence"})
+
+
+def clarifying_question_event(question: str) -> str:
+    return emit({"type": "clarifying_question", "question": question})
+
+
 def done_event(**kwargs) -> str:
     return emit({"type": "done", **kwargs})
 

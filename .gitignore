@@ -29,6 +29,7 @@ data/processed/chunks/*.jsonl
 staticfiles/
 media/
 *.log
+celerybeat-schedule
 
 # OS / IDE
 .DS_Store

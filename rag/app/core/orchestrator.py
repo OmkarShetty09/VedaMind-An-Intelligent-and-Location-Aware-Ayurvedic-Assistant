@@ -69,10 +69,11 @@ def run(
     top = passages[0] if passages else None
     if top is None or top.score < MIN_RELEVANCE_SCORE:
         logger.info("Relevance gate tripped (score=%s); refusing.", top.score if top else None)
+        yield streaming.low_confidence_event()
         for token in _split_tokens(refusal_text()):
             yield token
         yield streaming.citation_event([])
-        yield streaming.done_event(blocked=True, reason_code="low_relevance", tokens=0, model="")
+        yield streaming.done_event(blocked=True, reason_code="low_relevance", low_confidence=True, tokens=0, model="")
         return
 
     # 3. guardrail (binding, before generation)
@@ -85,32 +86,56 @@ def run(
             yield streaming.done_event(blocked=True, reason_code=result.reason_code, tokens=0, model="")
             return
 
-    # 4. cache (only for clean passes)
+    # 4. clarifying question: if recommending herbs and user hasn't disclosed meds
+    if _is_herb_recommendation(query) and not _has_meds(context) and not _has_asked_meds(context):
+        yield streaming.clarifying_question_event(
+            "Are you currently on any medication or have any diagnosed condition I should factor in?"
+        )
+        yield streaming.done_event(blocked=False, tokens=0, model="", needs_clarification=True)
+        return
+
+    # 5. cache (only for clean passes)
     citations = Citations()
     assembled = assemble(passages, citations)
     key = llm_cache.cache_key(query, [p["chunk_id"] for p in assembled],
                               versioning.PROMPT_VERSION, settings.llm_primary_model)
     cached = llm_cache.get_cached(key)
     if cached:
+        chip = _build_context_chip(context)
+        if chip:
+            yield streaming.context_chip_event(chip)
         for token in _split_tokens(cached["answer"]):
             yield token
         yield streaming.citation_event(citations.to_payload())
         yield streaming.done_event(blocked=False, tokens=cached["tokens"], model="cache")
         return
 
-    # 5. generate (buffered, then verified)
+    # 6. generate (buffered, then verified)
     with span("generate", model=settings.llm_primary_model):
-        messages = render_system_grounded(assembled, query)
+        chip = _build_context_chip(context)
+        if chip:
+            yield streaming.context_chip_event(chip)
+
+        messages = render_system_grounded(
+            assembled,
+            query,
+            dosha=context.get("dosha"),
+            season=context.get("season"),
+            medications=context.get("medications"),
+            conditions=context.get("conditions"),
+            location_context=_format_location(context.get("location"), context.get("weather")),
+        )
         messages.insert(1, {"role": "system", "content": SYSTEM_GUARD})
         answer = "".join(router.generate(messages, tier="primary"))
         if not answer.strip():
             raise PipelineError("Empty generation from providers", recoverable=True)
 
-    # 6. grounding verification (skip when no LLM configured)
+    # 7. grounding verification (skip when no LLM configured)
     with span("verify"):
         grounded = verify_grounding(answer, assembled)
         if not grounded:
             logger.warning("Grounding verification failed; replacing with refusal.")
+            yield streaming.low_confidence_event()
             answer = refusal_text()
 
     for token in _split_tokens(answer):
@@ -152,6 +177,54 @@ def verify_grounding(answer: str, passages: list[dict]) -> bool:
 
 def _has_meds(context: dict) -> bool:
     return bool(context.get("medications") or context.get("conditions"))
+
+
+def _has_asked_meds(context: dict) -> bool:
+    history = context.get("history", [])
+    for msg in history:
+        content = (msg.get("content") or "").lower()
+        if "medication" in content or "condition" in content or "drug" in content:
+            return True
+    return False
+
+
+def _is_herb_recommendation(query: str) -> bool:
+    herb_keywords = [
+        "recommend", "suggest", "take", "use", "try", "herb", "remedy",
+        "supplement", "formulation", "ashwagandha", "turmeric", "triphala",
+        "churna", "lehya", "asava", "arishta",
+    ]
+    q = query.lower()
+    return any(kw in q for kw in herb_keywords)
+
+
+def _build_context_chip(context: dict) -> str | None:
+    parts = []
+    season = context.get("season")
+    weather = context.get("weather", {})
+    location = context.get("location")
+    dosha = context.get("dosha", {})
+    if season:
+        parts.append(season.capitalize())
+    if location and weather.get("condition"):
+        parts.append(weather["condition"].title())
+    elif weather.get("condition"):
+        parts.append(weather["condition"].title())
+    dominant = dosha.get("dominant_dosha", "")
+    if dominant:
+        parts.append(f"{dominant.capitalize()}-adjusted")
+    return " · ".join(parts) if parts else None
+
+
+def _format_location(location: dict | None, weather: dict | None) -> str | None:
+    if not location and not weather:
+        return None
+    parts = []
+    if weather and weather.get("condition"):
+        parts.append(weather["condition"])
+    if location:
+        parts.append(f"lat {location['lat']:.2f}, lon {location['lon']:.2f}")
+    return ", ".join(parts) if parts else None
 
 
 def _split_tokens(text: str, size: int = 40) -> Iterator[str]:

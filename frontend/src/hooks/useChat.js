@@ -17,15 +17,34 @@ export function useChat() {
   const dispatch = useDispatch();
   const { connect, streaming } = useSSE();
   const { messages, activeSessionId, error } = useSelector((s) => s.chat);
+  const { coords, weather } = useSelector((s) => s.location);
+  const { profile } = useSelector((s) => s.dosha);
 
   const send = useCallback(
-    (text, { onGuardrail } = {}) => {
+    (text, { onGuardrail, onClarifyingQuestion } = {}) => {
       if (!text.trim()) return;
       dispatch(startStream());
       dispatch(appendUserMessage(text));
+
+      const locationContext = {};
+      if (coords) {
+        locationContext.lat = coords.lat;
+        locationContext.lon = coords.lon;
+      }
+      if (weather) {
+        locationContext.current_weather = {
+          temp_c: weather.temp_c,
+          humidity: weather.humidity,
+          condition: weather.condition,
+        };
+      }
+      if (profile) {
+        locationContext.season = weather?.season || null;
+      }
+
       connect(
         endpoints.chat.chat,
-        { message: text, session_id: activeSessionId },
+        { message: text, session_id: activeSessionId, location: locationContext },
         {
           onToken: (delta) => dispatch(appendAssistantChunk(delta)),
           onGuardrail: (decision) => {
@@ -35,12 +54,27 @@ export function useChat() {
           onCitation: (data) => {
             dispatch(finishAssistantMessage({ citations: data.sources }));
           },
-          onDone: () => dispatch(finishAssistantMessage({})),
+          onContextChip: (data) => {
+            dispatch(finishAssistantMessage({ context_chip: data }));
+          },
+          onLowConfidence: () => {
+            dispatch(finishAssistantMessage({ low_confidence: true }));
+          },
+          onClarifyingQuestion: (data) => {
+            dispatch(finishAssistantMessage({ clarifying_question: data.question }));
+            onClarifyingQuestion?.(data);
+          },
+          onDone: (data) => {
+            dispatch(finishAssistantMessage({
+              blocked: data?.blocked,
+              low_confidence: data?.low_confidence,
+            }));
+          },
           onError: (err) => dispatch(setStreamError(err.message || "Stream failed")),
         }
       );
     },
-    [connect, dispatch, activeSessionId]
+    [connect, dispatch, activeSessionId, coords, weather, profile]
   );
 
   const selectSession = useCallback((id) => dispatch(setSession(id)), [dispatch]);

@@ -52,6 +52,9 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                 model = ""
                 tokens = 0
                 block_reason = ""
+                guardrail_data = None
+                low_confidence = False
+                context_chip = None
                 for line in resp.iter_lines():
                     if not line:
                         continue
@@ -67,13 +70,23 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                         yield sse("token", {"delta": event["delta"]})
                     elif etype == "guardrail":
                         block_reason = event.get("decision", "")
+                        guardrail_data = event
                         yield sse("guardrail", event)
                     elif etype == "citation":
                         citations = event.get("sources", [])
                         yield sse("citation", event)
+                    elif etype == "context_chip":
+                        context_chip = event.get("chip", "")
+                        yield sse("context_chip", event)
+                    elif etype == "low_confidence":
+                        low_confidence = True
+                        yield sse("low_confidence", event)
+                    elif etype == "clarifying_question":
+                        yield sse("clarifying_question", event)
                     elif etype == "done":
                         model = event.get("model", "")
                         tokens = event.get("tokens", 0)
+                        block_reason = event.get("reason_code", block_reason)
                         break
                     elif etype == "error":
                         yield sse(
@@ -91,7 +104,17 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                     tokens=tokens,
                     block_reason=block_reason,
                 )
-                yield sse("done", {"message_id": str(assistant.id), "tokens": tokens, "model": model})
+                done_payload = {"message_id": str(assistant.id), "tokens": tokens, "model": model}
+                if block_reason:
+                    done_payload["blocked"] = True
+                    done_payload["reason_code"] = block_reason
+                if low_confidence:
+                    done_payload["low_confidence"] = True
+                if guardrail_data:
+                    done_payload["guardrail"] = guardrail_data
+                if context_chip:
+                    done_payload["context_chip"] = context_chip
+                yield sse("done", done_payload)
         except httpx.HTTPError as exc:
             logger.warning("RAG stream failed for %s: %s", correlation_id, exc)
             yield sse("error", {"code": "rag_unavailable", "message": "Could not reach the answer engine."})

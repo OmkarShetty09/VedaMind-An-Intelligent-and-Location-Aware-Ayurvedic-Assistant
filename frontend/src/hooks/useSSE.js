@@ -4,7 +4,8 @@ import { openSSE } from "../utils/sse.js";
 
 /**
  * Returns { connect, abort, streaming }. connect(url, body, handlers).
- * handlers: { onToken, onGuardrail, onCitation, onDone, onError }
+ * handlers: { onToken, onGuardrail, onCitation, onContextChip, onLowConfidence,
+ *             onClarifyingQuestion, onDone, onError }
  */
 export function useSSE() {
   const [streaming, setStreaming] = useState(false);
@@ -29,6 +30,15 @@ export function useSSE() {
               break;
             case "citation":
               handlers.onCitation?.(data);
+              break;
+            case "context_chip":
+              handlers.onContextChip?.(data);
+              break;
+            case "low_confidence":
+              handlers.onLowConfidence?.(data);
+              break;
+            case "clarifying_question":
+              handlers.onClarifyingQuestion?.(data);
               break;
             case "done":
               handlers.onDone?.(data);

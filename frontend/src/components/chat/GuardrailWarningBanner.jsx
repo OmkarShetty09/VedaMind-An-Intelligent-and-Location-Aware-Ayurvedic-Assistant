@@ -13,12 +13,26 @@ export function GuardrailWarningBanner({ decision }) {
     needs_review: "We could not safely verify this. Please consult a qualified practitioner.",
     caution: "Answer provided with caution. This is general wellness information only.",
   };
+  const herbDrugMessage =
+    decision.reason_code === "herb_drug_interaction"
+      ? "A potential herb-drug interaction was detected."
+      : decision.reason_code === "secondary_escalation"
+        ? "A safety concern was flagged by our secondary review."
+        : "";
+
   return (
     <div className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${tone}`}>
       <span className="text-base">{icon}</span>
       <div>
-        <p className="font-medium">{messages[decision.decision] || "Safety notice."}</p>
-        {decision.reason_code && <p className="mt-0.5 text-xs opacity-80">Code: {decision.reason_code}</p>}
+        <p className="font-medium">
+          {herbDrugMessage || messages[decision.decision] || "Safety notice."}
+        </p>
+        {decision.message && (
+          <p className="mt-1 text-xs opacity-90">{decision.message}</p>
+        )}
+        {decision.reason_code && !herbDrugMessage && (
+          <p className="mt-0.5 text-xs opacity-80">Code: {decision.reason_code}</p>
+        )}
       </div>
     </div>
   );

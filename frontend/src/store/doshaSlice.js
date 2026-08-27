@@ -20,7 +20,11 @@ const doshaSlice = createSlice({
     status: "idle",
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearResult(state) {
+      state.result = null;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(submitQuiz.pending, (state) => {
@@ -29,6 +33,12 @@ const doshaSlice = createSlice({
       .addCase(submitQuiz.fulfilled, (state, action) => {
         state.status = "done";
         state.result = action.payload;
+        if (action.payload?.results) {
+          state.profile = {
+            dominant_dosha: action.payload.results.dominant_dosha,
+            scores: action.payload.results.scores,
+          };
+        }
       })
       .addCase(submitQuiz.rejected, (state, action) => {
         state.status = "idle";
@@ -40,4 +50,5 @@ const doshaSlice = createSlice({
   },
 });
 
+export const { clearResult } = doshaSlice.actions;
 export default doshaSlice.reducer;

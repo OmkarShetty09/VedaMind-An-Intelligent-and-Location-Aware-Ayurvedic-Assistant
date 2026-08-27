@@ -32,7 +32,7 @@ const chatSlice = createSlice({
     },
     appendAssistantChunk(state, action) {
       const last = state.messages[state.messages.length - 1];
-      if (last && last.role === "assistant") {
+      if (last && last.role === "assistant" && last.streaming) {
         last.content = (last.content || "") + action.payload;
       } else {
         state.messages.push({ role: "assistant", content: action.payload, streaming: true });
@@ -44,6 +44,10 @@ const chatSlice = createSlice({
         last.streaming = false;
         if (action.payload?.citations) last.citations = action.payload.citations;
         if (action.payload?.blocked) last.blocked = true;
+        if (action.payload?.low_confidence) last.low_confidence = true;
+        if (action.payload?.context_chip) last.context_chip = action.payload.context_chip;
+        if (action.payload?.guardrail) last.guardrail = action.payload.guardrail;
+        if (action.payload?.clarifying_question) last.clarifying_question = action.payload.clarifying_question;
       }
       state.streaming = false;
     },

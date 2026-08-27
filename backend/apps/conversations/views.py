@@ -47,7 +47,9 @@ class ChatView(APIView):
             Message.objects.filter(conversation=conversation, role__in=("user", "assistant"))
             .order_by("-created_at")[:8]
         )[::-1]
-        bundle = build_context_bundle(request.user, history)
+        bundle = build_context_bundle(
+            request.user, history, client_location=data.get("location")
+        )
 
         correlation_id = request_correlation_id(request)
         return stream_chat(
