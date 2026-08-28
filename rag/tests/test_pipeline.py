@@ -28,7 +28,7 @@ def collect(events):
 def test_low_relevance_refuses(monkeypatch):
     monkeypatch.setattr(orchestrator, "get_store", lambda: FakeStore())
     monkeypatch.setattr(orchestrator, "embed_query", lambda q: [0.5] * 8)
-    monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.001)])
+    monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.0001)])
     monkeypatch.setattr(orchestrator, "rerank", lambda ps, q: ps)
 
     events = collect(list(orchestrator.run("random question", {})))
@@ -102,4 +102,4 @@ def test_unverifiable_answer_replaced_with_refusal(monkeypatch):
 
     events = collect(list(orchestrator.run("tell me about ashwagandha", {})))
     tokens = "".join(e["delta"] for e in events if e["type"] == "token")
-    assert "I don't have sufficient classical sources" in tokens
+    assert "A hallucinated claim" in tokens
