@@ -26,7 +26,7 @@ class LocationPayloadSerializer(serializers.Serializer):
 
 
 class ChatRequestSerializer(serializers.Serializer):
-    session_id = serializers.UUIDField(required=False)
+    session_id = serializers.UUIDField(required=False, allow_null=True)
     message = serializers.CharField(max_length=8000, allow_blank=False)
     location = LocationPayloadSerializer(required=False)
 

@@ -52,7 +52,11 @@ export async function openSSE(url, { body, onEvent, onError, onRetry, signal }) 
       let message = `Stream failed (${response.status})`;
       try {
         const data = await response.json();
-        message = data?.error?.message || data?.message || message;
+        const fields = data?.error?.fields;
+        const fieldErrors = fields
+          ? Object.entries(fields).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("; ")
+          : "";
+        message = data?.error?.message || fieldErrors || data?.message || message;
       } catch {
         /* keep default */
       }

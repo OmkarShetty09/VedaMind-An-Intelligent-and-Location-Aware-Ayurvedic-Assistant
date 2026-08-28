@@ -44,9 +44,12 @@ export function useChat() {
         locationContext.season = weather?.season || null;
       }
 
+      const payload = { message: text, location: locationContext };
+      if (activeSessionId) payload.session_id = activeSessionId;
+
       connect(
         endpoints.chat.chat,
-        { message: text, session_id: activeSessionId, location: locationContext },
+        payload,
         {
           onToken: (delta) => {
             dispatch(clearRetryState());
