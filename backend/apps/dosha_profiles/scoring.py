@@ -12,7 +12,7 @@ def score(answers: dict) -> dict:
     Returns {scores, percentages, dominant_dosha, secondary_dosha, classification, quiz_version}.
     """
     counts = {"vata": 0, "pitta": 0, "kapha": 0}
-    for q, payload in (answers or {}).items():
+    for _q, payload in (answers or {}).items():
         dosha = payload.get("dosha")
         if dosha in counts:
             counts[dosha] += 1
