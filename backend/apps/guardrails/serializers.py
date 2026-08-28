@@ -31,10 +31,10 @@ class InteractionCheckSerializer(serializers.Serializer):
 
     text = serializers.CharField(max_length=4000, required=False, allow_blank=True)
     entities = serializers.ListField(child=serializers.CharField(max_length=120), required=False)
-    context = serializers.DictField(child=serializers.CharField(), required=False)
+    context = serializers.DictField(required=False)
     doses = serializers.DictField(child=serializers.CharField(), required=False)
-    conversation_id = serializers.UUIDField(required=False)
-    message_id = serializers.UUIDField(required=False)
+    conversation_id = serializers.UUIDField(required=False, allow_null=True)
+    message_id = serializers.UUIDField(required=False, allow_null=True)
 
     def validate(self, attrs):
         if not attrs.get("text") and not attrs.get("entities"):

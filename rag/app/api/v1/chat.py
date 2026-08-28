@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
@@ -5,6 +7,8 @@ from pydantic import BaseModel
 from app.core import orchestrator
 from app.core.errors import PipelineError
 from app.llm import streaming
+
+logger = logging.getLogger("rag.api.chat")
 
 router = APIRouter()
 
@@ -31,7 +35,7 @@ def chat(payload: ChatRequest, request: Request):
         except PipelineError as exc:
             yield streaming.error_event(exc.code, exc.message)
         except Exception as exc:
-            request.app.state.logger.exception("Unhandled pipeline error")
+            logger.exception("Unhandled pipeline error")
             yield streaming.error_event("internal", f"Unexpected pipeline failure: {type(exc).__name__}")
 
     return StreamingResponse(

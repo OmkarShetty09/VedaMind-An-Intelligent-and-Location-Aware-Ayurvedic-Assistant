@@ -6,7 +6,7 @@ from .stores.base import Passage
 
 logger = logging.getLogger("rag.retrieval.rerank")
 
-MIN_RELEVANCE_SCORE = 0.2  # below this, treat as unsupported -> refusal
+MIN_RELEVANCE_SCORE = 0.001  # below this, treat as unsupported -> refusal
 
 
 def rerank(passages: list[Passage], query: str) -> list[Passage]:

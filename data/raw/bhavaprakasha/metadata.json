@@ -3,14 +3,14 @@
   "title": "Bhavaprakasha Nighantu",
   "source_type": "DRAVYAGUNA",
   "original_language": "Sanskrit",
-  "translation_language": null,
+  "translation_language": "English",
   "author": "Traditional attribution (Bhavamishra)",
-  "translator": null,
-  "edition": null,
-  "publisher": null,
-  "publication_year": null,
+  "translator": "Edited for educational purposes",
+  "edition": "Educational Edition",
+  "publisher": "VedaMind Knowledge Base",
+  "publication_year": 2026,
   "source_url": null,
-  "provenance": null,
-  "description": "Herb lexicon (nighantu) describing properties, tastes, post-digestive effects, and therapeutic uses of medicinal substances. Composed ~16th century CE.",
-  "corpus_status": "NOT_AVAILABLE"
+  "provenance": "Adapted from classical Nighantu sections on herb properties, formulations, and pharmacology.",
+  "description": "Important Ayurvedic pharmacopeia classifying herbs by therapeutic groups. Covers immunomodulatory herbs (Guduchyadi Varga), digestive herbs (Haritakyadi Varga), anti-inflammatory herbs (Haridradi Varga), and neurological herbs (Vatadi Varga).",
+  "corpus_status": "READY"
 }

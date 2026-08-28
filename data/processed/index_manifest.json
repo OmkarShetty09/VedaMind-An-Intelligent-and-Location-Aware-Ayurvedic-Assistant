@@ -1,0 +1,15 @@
+{
+  "version": "text-embedding-3-large",
+  "embedding_model": "text-embedding-3-large",
+  "count": 98,
+  "digest": "4ce65a31af3caa22c7a2a9ee8ebe2120fda2ce3077c26aaa5c017bcd4f3f5443",
+  "written_at": "2026-08-28T07:04:25.390761+00:00",
+  "per_source": {
+    "ashtanga_hridaya": 12,
+    "bhavaprakasha": 10,
+    "charaka_samhita": 44,
+    "clinical_evidence": 10,
+    "nighantus": 10,
+    "sushruta_samhita": 12
+  }
+}

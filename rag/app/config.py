@@ -30,10 +30,10 @@ class Settings(BaseSettings):
     gemini_api_key: str = ""
     groq_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434/v1"
-    llm_primary_model: str = "gemini-2.5-pro"  # primary generator
+    llm_primary_model: str = "gemini-2.0-flash"  # primary generator
     llm_fallback_model: str = "llama-3.3-70b-versatile"  # live fallback (Groq)
     llm_local_fallback_model: str = "llama3.2"  # offline fallback (Ollama)
-    llm_cheap_model: str = "gemini-2.5-flash"  # extraction / summarization / judging
+    llm_cheap_model: str = "gemini-2.0-flash"  # extraction / summarization / judging
 
     daily_token_budget: int = 200_000
 

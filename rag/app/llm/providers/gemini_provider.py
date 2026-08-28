@@ -26,10 +26,10 @@ class GeminiProvider(LLMProvider):
 
     def generate(self, messages, model=None) -> iter:
         model = model or self.default_model
-        url = f"{_BASE}/{model}:streamGenerateContent?alt=sse&key={self._api_key}"
+        url = f"{_BASE}/{model}:streamGenerateContent?alt=sse"
         payload = {"contents": _to_gemini_messages(messages)}
         try:
-            with httpx.stream("POST", url, json=payload, timeout=_TIMEOUT) as resp:
+            with httpx.stream("POST", url, json=payload, headers={"x-goog-api-key": self._api_key}, timeout=_TIMEOUT) as resp:
                 if resp.status_code != 200:
                     raise ProviderError(f"gemini http {resp.status_code}", "gemini")
                 for line in resp.iter_lines():
@@ -49,12 +49,12 @@ class GeminiProvider(LLMProvider):
 
     def complete(self, messages, model=None, *, json_mode=False) -> str:
         model = model or self.default_model
-        url = f"{_BASE}/{model}:generateContent?key={self._api_key}"
+        url = f"{_BASE}/{model}:generateContent"
         payload = {"contents": _to_gemini_messages(messages)}
         if json_mode:
             payload["generationConfig"] = {"responseMimeType": "application/json"}
         try:
-            resp = httpx.post(url, json=payload, timeout=_TIMEOUT)
+            resp = httpx.post(url, json=payload, headers={"x-goog-api-key": self._api_key}, timeout=_TIMEOUT)
             resp.raise_for_status()
             parts = resp.json()["candidates"][0]["content"]["parts"]
             return "".join(p.get("text", "") for p in parts)

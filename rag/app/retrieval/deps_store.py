@@ -13,7 +13,7 @@ def build_store() -> VectorStore:
         return MilvusStore()
     from .stores.pgvector_store import PgVectorStore
 
-    return PgVectorStore(settings.database_url)
+    return PgVectorStore(settings.database_url, embedding_dim=settings.embedding_dim)
 
 
 _store: VectorStore | None = None

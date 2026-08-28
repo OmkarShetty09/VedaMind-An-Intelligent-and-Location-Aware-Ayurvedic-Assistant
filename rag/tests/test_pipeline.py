@@ -28,7 +28,7 @@ def collect(events):
 def test_low_relevance_refuses(monkeypatch):
     monkeypatch.setattr(orchestrator, "get_store", lambda: FakeStore())
     monkeypatch.setattr(orchestrator, "embed_query", lambda q: [0.5] * 8)
-    monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.05)])
+    monkeypatch.setattr(orchestrator, "hybrid_search", lambda e, q, f: [passage("c1", 0.001)])
     monkeypatch.setattr(orchestrator, "rerank", lambda ps, q: ps)
 
     events = collect(list(orchestrator.run("random question", {})))

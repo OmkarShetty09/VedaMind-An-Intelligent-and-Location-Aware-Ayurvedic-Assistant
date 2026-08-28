@@ -19,7 +19,7 @@ _CHEAP = "cheap"
 # Failover order per tier. Primary falls through Groq (live) then Ollama (local).
 _TIER_CHAIN = {
     _PRIMARY: [_PRIMARY, _FALLBACK, _LOCAL_FALLBACK],
-    _CHEAP: [_CHEAP],
+    _CHEAP: [_CHEAP, _FALLBACK, _LOCAL_FALLBACK],
 }
 
 

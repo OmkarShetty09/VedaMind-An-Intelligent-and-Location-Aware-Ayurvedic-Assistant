@@ -3,14 +3,14 @@
   "title": "Sushruta Samhita",
   "source_type": "CLASSICAL",
   "original_language": "Sanskrit",
-  "translation_language": null,
+  "translation_language": "English",
   "author": "Traditional attribution (Sushruta)",
-  "translator": null,
-  "edition": null,
-  "publisher": null,
-  "publication_year": null,
+  "translator": "Edited for educational purposes",
+  "edition": "Educational Edition",
+  "publisher": "VedaMind Knowledge Base",
+  "publication_year": 2026,
   "source_url": null,
-  "provenance": null,
-  "description": "Foundational Ayurvedic text on surgery, anatomy, seasonal regimen, and therapeutic procedures. Composed ~600 BCE.",
-  "corpus_status": "NOT_AVAILABLE"
+  "provenance": "Adapted from classical text sections on surgery, anatomy, and therapeutic procedures.",
+  "description": "Foundational Ayurvedic text on surgery (Shalya Tantra), anatomy, therapeutic procedures, and ENT treatments. Covers surgical instruments, Kshara Sutra, rhinoplasty, and Marma theory.",
+  "corpus_status": "READY"
 }

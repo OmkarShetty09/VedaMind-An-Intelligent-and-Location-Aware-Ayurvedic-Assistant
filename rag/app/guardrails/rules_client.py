@@ -27,9 +27,11 @@ def check(
             "pregnancy": bool(context.get("pregnancy")),
             "pediatric": bool(context.get("pediatric")),
         },
-        "conversation_id": conversation_id,
-        "message_id": message_id,
     }
+    if conversation_id:
+        payload["conversation_id"] = conversation_id
+    if message_id:
+        payload["message_id"] = message_id
     try:
         resp = httpx.post(
             settings.backend_guardrail_url,

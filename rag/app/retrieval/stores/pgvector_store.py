@@ -1,7 +1,7 @@
 """Postgres + pgvector dense and tsvector sparse in one table we own."""
 
-import logging
 import hashlib
+import logging
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -29,8 +29,9 @@ CREATE TABLE IF NOT EXISTS rag_chunks (
 class PgVectorStore(VectorStore):
     """Postgres + pgvector dense and tsvector sparse in one table we own."""
 
-    def __init__(self, dsn: str):
+    def __init__(self, dsn: str, embedding_dim: int = 768):
         self._dsn = dsn
+        self._embedding_dim = embedding_dim
         self._ensure_table()
 
     def _connect(self):
@@ -38,24 +39,25 @@ class PgVectorStore(VectorStore):
 
     def _ensure_table(self):
         with self._connect() as conn:
-            conn.execute(_CREATE_TABLE)
+            conn.autocommit = True
+            conn.execute(f"""
+                CREATE TABLE IF NOT EXISTS rag_chunks (
+                    id TEXT PRIMARY KEY,
+                    content TEXT NOT NULL,
+                    metadata JSONB NOT NULL DEFAULT '{{}}'::jsonb,
+                    embedding vector({self._embedding_dim}) NOT NULL,
+                    fts tsvector GENERATED ALWAYS AS (to_tsvector('english', content)) STORED,
+                    corpus_id TEXT,
+                    source_type TEXT,
+                    content_hash TEXT,
+                    chunk_index INTEGER,
+                    rights_status TEXT
+                );
+            """)
             conn.execute("CREATE INDEX IF NOT EXISTS rag_chunks_fts ON rag_chunks USING GIN (fts);")
             conn.execute("CREATE INDEX IF NOT EXISTS rag_chunks_hnsw ON rag_chunks USING hnsw (embedding vector_cosine_ops);")
             conn.execute("CREATE INDEX IF NOT EXISTS rag_chunks_corpus ON rag_chunks (corpus_id);")
             conn.execute("CREATE INDEX IF NOT EXISTS rag_chunks_source_type ON rag_chunks (source_type);")
-            # Migrate existing tables: add columns if missing
-            for col, typ in [
-                ("corpus_id", "TEXT"),
-                ("source_type", "TEXT"),
-                ("content_hash", "TEXT"),
-                ("chunk_index", "INTEGER"),
-                ("rights_status", "TEXT"),
-            ]:
-                try:
-                    conn.execute(f"ALTER TABLE rag_chunks ADD COLUMN {col} {typ}")
-                except psycopg.errors.DuplicateColumn:
-                    pass
-            conn.commit()
 
     def search_dense(self, embedding, top_k, filters=None) -> list[Passage]:
         vec = "[" + ",".join(f"{v:.6f}" for v in embedding) + "]"
