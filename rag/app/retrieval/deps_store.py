@@ -24,3 +24,9 @@ def get_store() -> VectorStore:
     if _store is None:
         _store = build_store()
     return _store
+
+
+def reset_store() -> None:
+    """Reset the singleton store instance (for test isolation)."""
+    global _store
+    _store = None

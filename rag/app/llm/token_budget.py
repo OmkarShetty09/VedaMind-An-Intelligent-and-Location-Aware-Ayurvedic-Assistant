@@ -40,3 +40,9 @@ def check_daily_budget(user_id: str, extra_tokens: int) -> bool:
         return used <= get_settings().daily_token_budget
     except redis.RedisError:
         return True  # budget service down -> allow (logged upstream); safety decided by guardrails, not budget
+
+
+def reset_cache() -> None:
+    """Reset the singleton Redis connection (for test isolation)."""
+    global _cache
+    _cache = None

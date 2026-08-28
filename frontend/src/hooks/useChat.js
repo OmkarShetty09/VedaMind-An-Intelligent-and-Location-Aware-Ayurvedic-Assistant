@@ -70,6 +70,9 @@ export function useChat() {
             onClarifyingQuestion?.(data);
           },
           onDone: (data) => {
+            if (data?.session_id && !activeSessionId) {
+              dispatch(setSession(data.session_id));
+            }
             dispatch(finishAssistantMessage({
               blocked: data?.blocked,
               low_confidence: data?.low_confidence,

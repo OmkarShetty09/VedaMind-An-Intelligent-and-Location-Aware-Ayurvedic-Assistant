@@ -104,7 +104,12 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                     tokens=tokens,
                     block_reason=block_reason,
                 )
-                done_payload = {"message_id": str(assistant.id), "tokens": tokens, "model": model}
+                done_payload = {
+                    "message_id": str(assistant.id),
+                    "session_id": str(session_id),
+                    "tokens": tokens,
+                    "model": model,
+                }
                 if block_reason:
                     done_payload["blocked"] = True
                     done_payload["reason_code"] = block_reason

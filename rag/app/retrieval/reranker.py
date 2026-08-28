@@ -40,3 +40,9 @@ def _get_model(name: str):
 
         _model = CrossEncoder(name)
     return _model
+
+
+def reset_reranker() -> None:
+    """Reset the singleton reranker model (for test isolation)."""
+    global _model
+    _model = None

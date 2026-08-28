@@ -16,6 +16,6 @@ select = ["E", "F", "W", "I", "B", "UP", "DJ"]
 "apps/*/tests/*" = ["S101"]
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.dev"
+DJANGO_SETTINGS_MODULE = "config.settings.test"
 python_files = ["test_*.py"]
 testpaths = ["apps"]

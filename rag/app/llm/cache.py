@@ -35,3 +35,9 @@ def set_cached(key: str, payload: dict, ttl_hours: int) -> None:
         _redis().set(key, json.dumps(payload), ex=ttl_hours * 3600)
     except redis.RedisError:
         pass
+
+
+def reset_cache() -> None:
+    """Reset the singleton Redis connection (for test isolation)."""
+    global _cache
+    _cache = None
