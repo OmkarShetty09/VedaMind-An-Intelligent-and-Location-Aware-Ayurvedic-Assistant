@@ -10,8 +10,9 @@ export function RitucharyaSeasonBadge({ season }) {
   if (!season) return null;
   const info = ritu[season] || { label: season, emoji: "🌿" };
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-brand/30 bg-brand-light px-3 py-1 text-xs font-medium text-brand">
-      <span>{info.emoji}</span> {info.label}
-    </div>
+    <span className="inline-flex items-center gap-2 rounded-full border border-brand/20 bg-brand-50 px-3.5 py-1.5 text-xs font-medium text-brand-700">
+      <span>{info.emoji}</span>
+      {info.label}
+    </span>
   );
 }

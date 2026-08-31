@@ -25,8 +25,11 @@ export function ChatPage() {
 
   if (!profile || !profile.dominant_dosha) {
     return (
-      <div className="flex h-[calc(100vh-12rem)] items-center justify-center">
-        <div className="text-sm text-text-muted">Loading your profile...</div>
+      <div className="flex h-[60vh] items-center justify-center">
+        <div className="flex items-center gap-3 text-sm text-text-muted">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
+          Loading your profile...
+        </div>
       </div>
     );
   }
@@ -36,16 +39,16 @@ export function ChatPage() {
     : "";
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
+    <div className="flex h-[calc(100vh-8rem)] flex-col">
+      <div className="mb-3 flex items-center gap-3">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Ask VedaMind</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="page-title">Ask VedaMind</h1>
+          <p className="page-subtitle">
             Grounded in classical texts, with safety checks on every answer.
           </p>
         </div>
         {doshaLabel && (
-          <span className="inline-flex items-center rounded-full border border-brand bg-brand-light px-3 py-1 text-xs font-medium text-brand">
+          <span className="shrink-0 rounded-full border border-brand/20 bg-brand-50 px-3 py-1 text-xs font-medium text-brand">
             {doshaLabel} type
           </span>
         )}

@@ -23,11 +23,20 @@ const dinacharyaSlice = createSlice({
         state.routine = action.payload;
       })
       .addCase(loadRoutine.rejected, (state, action) => {
-        state.status = "idle";
+        state.status = "error";
         state.error = action.error.message;
       })
+      .addCase(regenerate.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
       .addCase(regenerate.fulfilled, (state, action) => {
+        state.status = "done";
         state.routine = action.payload;
+      })
+      .addCase(regenerate.rejected, (state, action) => {
+        state.status = "error";
+        state.error = action.error.message;
       });
   },
 });

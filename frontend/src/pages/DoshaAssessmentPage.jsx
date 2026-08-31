@@ -75,7 +75,7 @@ const STEPS = [
         q: "Sleep Quality",
         options: [
           "Light sleeper, restless, easily awakened, prone to insomnia.",
-          "Sound, moderate sleeper (6\u20138 hours); can wake up easily if needed.",
+          "Sound, moderate sleeper (6–8 hours); can wake up easily if needed.",
           "Deep, heavy sleeper (8+ hours); finds it hard to wake up in the morning.",
         ],
       },
@@ -150,14 +150,17 @@ export function DoshaAssessmentPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Dosha Assessment</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="page-title">Dosha Assessment</h1>
+          <p className="page-subtitle">
             A short, self-reported snapshot. This is educational, not diagnostic.
           </p>
         </div>
-        <div className="rounded-xl border border-line bg-surface p-6 space-y-4">
-          <h2 className="text-lg font-semibold text-text">Please read before continuing</h2>
-          <div className="space-y-2 text-sm leading-relaxed text-text-muted">
+        <div className="card p-6 space-y-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50 text-lg">⚠️</div>
+            <h2 className="text-lg font-semibold text-text">Please read before continuing</h2>
+          </div>
+          <div className="space-y-3 text-sm leading-relaxed text-text-muted">
             <p>
               VedaMind provides educational wellness guidance based on classical Ayurvedic texts. It is <strong>not</strong>{" "}
               a medical device and does not provide diagnosis, treatment, or medical advice.
@@ -170,7 +173,7 @@ export function DoshaAssessmentPage() {
           </div>
           <button
             onClick={() => acceptConsent()}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-brand-dark active:scale-[0.98]"
           >
             I understand — continue
           </button>
@@ -189,8 +192,8 @@ export function DoshaAssessmentPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold text-text">Your Dosha Profile</h1>
-          <p className="mt-1 text-sm text-text-muted">
+          <h1 className="page-title">Your Dosha Profile</h1>
+          <p className="page-subtitle">
             A short, self-reported snapshot. This is educational, not diagnostic.
           </p>
         </div>
@@ -203,7 +206,7 @@ export function DoshaAssessmentPage() {
               dispatch(clearResult());
               navigate("/chat");
             }}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-brand-dark active:scale-[0.98]"
           >
             Start chatting
           </button>
@@ -219,8 +222,8 @@ export function DoshaAssessmentPage() {
 
   const selectOption = (key, idx) => {
     setAnswers((prev) => ({ ...prev, [key]: idx }));
-    if (step < STEPS.length - 1) {
-      setTimeout(() => setStep((s) => s + 1), 200);
+    if (step < ALL_QUESTIONS.length - 1) {
+      setTimeout(() => setStep((s) => s + 1), 250);
     }
   };
 
@@ -233,38 +236,38 @@ export function DoshaAssessmentPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-semibold text-text">Dosha Assessment</h1>
-        <p className="mt-1 text-sm text-text-muted">
+        <h1 className="page-title">Dosha Assessment</h1>
+        <p className="page-subtitle">
           A short, self-reported snapshot. This is educational, not diagnostic.
         </p>
       </div>
 
-      <div className="rounded-xl border border-line bg-surface p-4">
-        <div className="mb-4 flex items-center justify-between text-xs text-text-muted">
-          <span>
+      <div className="card px-5 py-4">
+        <div className="mb-3 flex items-center justify-between text-xs text-text-muted">
+          <span className="font-medium">
             Question {step + 1} of {ALL_QUESTIONS.length}
           </span>
           <span>{currentSection?.section}</span>
         </div>
-        <div className="h-2 overflow-hidden rounded-full bg-brand-light">
+        <div className="h-2 overflow-hidden rounded-full bg-brand-100">
           <div
-            className="h-full rounded-full bg-brand transition-all duration-300"
+            className="h-full rounded-full bg-brand transition-all duration-300 ease-out"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
-      <fieldset className="rounded-xl border border-line bg-surface p-6">
-        <legend className="text-base font-medium text-text">{current.q}</legend>
-        <div className="mt-4 space-y-2">
+      <fieldset className="card p-6">
+        <legend className="text-base font-semibold text-text">{current.q}</legend>
+        <div className="mt-5 space-y-3">
           {current.options.map((opt, idx) => (
             <button
               key={idx}
               onClick={() => selectOption(current.key, idx)}
-              className={`w-full rounded-xl border px-4 py-3 text-left text-sm transition-colors ${
+              className={`w-full rounded-xl border px-5 py-4 text-left text-sm transition-all duration-150 ${
                 answers[current.key] === idx
-                  ? "border-brand bg-brand text-white"
-                  : "border-line bg-white text-text hover:border-brand"
+                  ? "border-brand bg-brand text-white shadow-sm"
+                  : "border-line bg-white text-text hover:border-brand/40 hover:bg-brand-50/50"
               }`}
             >
               {opt}
@@ -277,7 +280,7 @@ export function DoshaAssessmentPage() {
         <button
           onClick={() => setStep((s) => Math.max(0, s - 1))}
           disabled={step === 0}
-          className="rounded-lg border border-line px-4 py-2 text-sm text-text-muted hover:bg-surface disabled:opacity-40"
+          className="rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-brand-50 hover:text-text disabled:opacity-40 disabled:hover:bg-transparent"
         >
           Back
         </button>
@@ -285,7 +288,7 @@ export function DoshaAssessmentPage() {
           <button
             onClick={handleSubmit}
             disabled={answered < ALL_QUESTIONS.length || submitting}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors disabled:opacity-50"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-brand-dark hover:shadow-md disabled:opacity-50"
           >
             {submitting ? "Computing..." : "See my dosha"}
           </button>
@@ -293,7 +296,7 @@ export function DoshaAssessmentPage() {
           <button
             onClick={() => setStep((s) => Math.min(ALL_QUESTIONS.length - 1, s + 1))}
             disabled={!answers[current.key]}
-            className="rounded-lg bg-brand px-4 py-2 text-sm font-medium text-white hover:bg-brand-dark transition-colors disabled:opacity-50"
+            className="rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-brand-dark hover:shadow-md disabled:opacity-50"
           >
             Next
           </button>

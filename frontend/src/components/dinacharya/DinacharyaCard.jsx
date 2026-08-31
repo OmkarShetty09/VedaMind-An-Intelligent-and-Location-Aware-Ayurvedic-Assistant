@@ -3,7 +3,16 @@ import { RoutineTimeline } from "./RoutineTimeline.jsx";
 import { WeatherContextBanner } from "./WeatherContextBanner.jsx";
 
 export function DinacharyaCard({ routine, weather, loading, onRegenerate }) {
-  if (loading) return <div className="rounded-2xl border border-line bg-surface p-6">Loading your routine...</div>;
+  if (loading) {
+    return (
+      <div className="card flex items-center justify-center p-10">
+        <div className="flex items-center gap-3 text-sm text-text-muted">
+          <span className="h-2 w-2 animate-pulse rounded-full bg-brand" />
+          Generating your routine...
+        </div>
+      </div>
+    );
+  }
   if (!routine) return <RoutineEmptyState onRegenerate={onRegenerate} />;
   return (
     <div className="space-y-4">

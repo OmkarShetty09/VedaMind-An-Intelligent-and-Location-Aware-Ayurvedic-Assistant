@@ -10,5 +10,27 @@
   --text: #2b2a26;
   --text-muted: #6b6a63;
   --surface: #fffdf8;
+  --surface-warm: #f7f4ec;
   --line: #e4dfd2;
+  --radius: 12px;
+  --sidebar-width: 256px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
 }

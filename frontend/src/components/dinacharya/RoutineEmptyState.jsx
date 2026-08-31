@@ -5,10 +5,13 @@ export function RoutineEmptyState({ onRegenerate }) {
     <EmptyState
       icon="🌤️"
       title="No routine yet"
-      description="Allow location access so we can tailor your routine to your local time and season."
+      description="Generate your personalized daily routine based on your local time, season, and weather."
       action={
-        <button className="text-sm font-medium text-brand underline" onClick={onRegenerate}>
-          Generate now
+        <button
+          onClick={onRegenerate}
+          className="mt-2 rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white transition-all duration-150 hover:bg-brand-dark active:scale-[0.98]"
+        >
+          Generate routine
         </button>
       }
     />

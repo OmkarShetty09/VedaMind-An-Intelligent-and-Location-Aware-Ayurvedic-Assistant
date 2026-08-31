@@ -1,8 +1,8 @@
 const config = {
-  block: { tone: "border-red-300 bg-red-50 text-red-800", icon: "⛔" },
-  needs_review: { tone: "border-red-300 bg-red-50 text-red-800", icon: "⚠️" },
-  caution: { tone: "border-amber-300 bg-amber-50 text-amber-800", icon: "⚠️" },
-  pass: { tone: "border-green-300 bg-green-50 text-green-800", icon: "✓" },
+  block: { tone: "border-red-200 bg-red-50 text-red-800", icon: "⛔" },
+  needs_review: { tone: "border-red-200 bg-red-50 text-red-800", icon: "⚠️" },
+  caution: { tone: "border-amber-200 bg-amber-50 text-amber-800", icon: "⚠️" },
+  pass: { tone: "border-green-200 bg-green-50 text-green-800", icon: "✓" },
 };
 
 export function GuardrailWarningBanner({ decision }) {
@@ -21,9 +21,9 @@ export function GuardrailWarningBanner({ decision }) {
         : "";
 
   return (
-    <div className={`flex items-start gap-2 rounded-xl border px-4 py-3 text-sm ${tone}`}>
-      <span className="text-base">{icon}</span>
-      <div>
+    <div className={`mb-3 flex items-start gap-3 rounded-xl border px-4 py-3 text-sm ${tone}`}>
+      <span className="mt-0.5 text-base">{icon}</span>
+      <div className="flex-1">
         <p className="font-medium">
           {herbDrugMessage || messages[decision.decision] || "Safety notice."}
         </p>

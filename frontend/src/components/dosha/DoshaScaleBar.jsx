@@ -44,25 +44,25 @@ export function DoshaScaleBar({ dosha, count, percentage, total, isPrimary, isSe
   const cfg = DOSHA_CONFIG[dosha] || DOSHA_CONFIG.vata;
 
   return (
-    <div className={`rounded-xl border p-3 transition-all ${
+    <div className={`rounded-xl border p-3.5 transition-all ${
       isPrimary
-        ? "border-brand bg-brand/5 shadow-sm"
+        ? "border-brand/30 bg-brand-50 shadow-soft"
         : isSecondary
-        ? "border-line bg-surface/50"
-        : "border-transparent bg-surface/30"
+          ? "border-line bg-surface/50"
+          : "border-transparent bg-surface/30"
     }`}>
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           <span className={cfg.textColor}>{cfg.icon}</span>
           <span className="text-sm font-medium text-text">{cfg.label}</span>
           <span className="text-xs text-text-muted">{cfg.element}</span>
           {isPrimary && (
-            <span className="rounded-full bg-brand/10 px-2 py-0.5 text-xs font-medium text-brand">
+            <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
               Primary
             </span>
           )}
           {isSecondary && (
-            <span className="rounded-full bg-surface px-2 py-0.5 text-xs font-medium text-text-muted">
+            <span className="rounded-full bg-surface px-2 py-0.5 text-[10px] font-medium text-text-faint">
               Secondary
             </span>
           )}
@@ -72,7 +72,7 @@ export function DoshaScaleBar({ dosha, count, percentage, total, isPrimary, isSe
           <span className="ml-1 text-xs font-normal text-text-muted">({pct}%)</span>
         </span>
       </div>
-      <div className={`mt-2 h-3 overflow-hidden rounded-full ${cfg.track}`}>
+      <div className={`mt-2.5 h-2.5 overflow-hidden rounded-full ${cfg.track}`}>
         <div
           className={`h-full rounded-full ${cfg.color} transition-all duration-700 ease-out`}
           style={{ width: `${pct}%` }}
