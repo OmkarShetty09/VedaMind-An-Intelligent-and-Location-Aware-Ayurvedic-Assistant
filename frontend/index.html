@@ -9,6 +9,11 @@
     <title>VedaMind</title>
   </head>
   <body>
+    <script>
+      if (localStorage.getItem("vedamind_theme") === "dark") {
+        document.documentElement.classList.add("dark");
+      }
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
   </body>

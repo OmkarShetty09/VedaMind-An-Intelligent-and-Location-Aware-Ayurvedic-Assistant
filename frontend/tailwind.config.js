@@ -1,12 +1,13 @@
 export default {
   content: ["./index.html", "./src/**/*.{js,jsx}"],
+  darkMode: "class",
   theme: {
     extend: {
       colors: {
         brand: {
           DEFAULT: "#2c5f2d",
           dark: "#1f4520",
-          light: "#e9f0e4",
+          light: "var(--brand-light)",
           50: "#f0f5ef",
           100: "#e9f0e4",
           200: "#d4e2cd",
@@ -23,17 +24,17 @@ export default {
           light: "#f5e6c8",
         },
         surface: {
-          DEFAULT: "#fffdf8",
-          warm: "#f7f4ec",
+          DEFAULT: "var(--surface)",
+          warm: "var(--surface-warm)",
         },
         text: {
-          DEFAULT: "#2b2a26",
-          muted: "#6b6a63",
-          faint: "#9a9890",
+          DEFAULT: "var(--text)",
+          muted: "var(--text-muted)",
+          faint: "var(--text-faint)",
         },
         line: {
-          DEFAULT: "#e4dfd2",
-          light: "#ede9de",
+          DEFAULT: "var(--line)",
+          light: "var(--line-light)",
         },
         caution: "#b45309",
         danger: "#9b1c1c",

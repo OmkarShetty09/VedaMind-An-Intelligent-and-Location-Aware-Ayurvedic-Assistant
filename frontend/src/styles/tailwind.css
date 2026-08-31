@@ -14,7 +14,8 @@
   }
 
   ::selection {
-    @apply bg-brand/15 text-brand-900;
+    background-color: color-mix(in srgb, var(--brand) 15%, transparent);
+    color: var(--brand-dark);
   }
 
   * {
@@ -23,6 +24,11 @@
 
   *:focus-visible {
     @apply outline-2 outline-offset-2 outline-brand/40;
+  }
+
+  .dark body,
+  .dark {
+    color-scheme: dark;
   }
 }
 

@@ -4,16 +4,30 @@
   --brand: #2c5f2d;
   --brand-dark: #1f4520;
   --brand-light: #e9f0e4;
+
   --accent: #b8860b;
   --caution: #b45309;
   --danger: #9b1c1c;
   --text: #2b2a26;
   --text-muted: #6b6a63;
+  --text-faint: #9a9890;
   --surface: #fffdf8;
   --surface-warm: #f7f4ec;
   --line: #e4dfd2;
+  --line-light: #ede9de;
   --radius: 12px;
   --sidebar-width: 256px;
+}
+
+.dark {
+  --text: #e8e6e1;
+  --text-muted: #a0a09a;
+  --text-faint: #707068;
+  --surface: #1a1a18;
+  --surface-warm: #141412;
+  --line: #2e2e2a;
+  --line-light: #242420;
+  --brand-light: #1e2e1f;
 }
 
 /* Scrollbar styling */
