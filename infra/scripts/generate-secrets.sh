@@ -28,7 +28,6 @@ upsert("OPENAI_API_KEY", lambda: "")
 upsert("GEMINI_API_KEY", lambda: "")
 upsert("GROQ_API_KEY", lambda: "")
 upsert("OLLAMA_BASE_URL", lambda: "http://localhost:11434/v1")
-upsert("OPENWEATHER_API_KEY", lambda: "")
 
 if write:
     with env_file.open("a") as fh:

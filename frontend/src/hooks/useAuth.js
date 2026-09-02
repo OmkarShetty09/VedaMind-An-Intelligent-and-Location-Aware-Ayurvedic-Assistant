@@ -2,13 +2,20 @@ import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { clearError, fetchMe, login, logout, register, updateConsent } from "../store/authSlice.js";
+import { getAccessToken } from "../api/client.js";
 
 export function useAuth() {
   const dispatch = useDispatch();
   const { user, status, consentStatus, error } = useSelector((s) => s.auth);
 
   useEffect(() => {
-    if (status === "idle") dispatch(fetchMe());
+    if (status === "idle") {
+      if (getAccessToken()) {
+        dispatch(fetchMe());
+      } else {
+        dispatch({ type: "auth/noSession" });
+      }
+    }
   }, [dispatch, status]);
 
   const signIn = useCallback((payload) => dispatch(login(payload)), [dispatch]);

@@ -11,7 +11,7 @@ class WeatherSnapshot(models.Model):
     lon = models.FloatField()
     fetched_at = models.DateTimeField(db_index=True)
     payload = models.JSONField(default=dict)
-    source = models.CharField(max_length=16, default="openweather")  # openweather | stale
+    source = models.CharField(max_length=16, default="open-meteo")  # open-meteo | stale
 
     class Meta:
         indexes = [models.Index(fields=["lat", "lon", "fetched_at"])]
@@ -30,7 +30,7 @@ class WeatherSnapshot(models.Model):
         from django.utils import timezone
 
         age = timezone.now() - self.fetched_at
-        return age > timedelta(minutes=settings.OPENWEATHER_CACHE_TTL_MINUTES)
+        return age > timedelta(minutes=settings.WEATHER_CACHE_TTL_MINUTES)
 
 
 class GeoLocation(models.Model):

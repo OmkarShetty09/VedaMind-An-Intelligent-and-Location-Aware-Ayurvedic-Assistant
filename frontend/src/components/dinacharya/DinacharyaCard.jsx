@@ -2,7 +2,7 @@ import { RoutineEmptyState } from "./RoutineEmptyState.jsx";
 import { RoutineTimeline } from "./RoutineTimeline.jsx";
 import { WeatherContextBanner } from "./WeatherContextBanner.jsx";
 
-export function DinacharyaCard({ routine, weather, loading, onRegenerate }) {
+export function DinacharyaCard({ routine, weather, weatherLoading, onRefreshWeather, loading, onRegenerate }) {
   if (loading) {
     return (
       <div className="card flex items-center justify-center p-10">
@@ -13,11 +13,14 @@ export function DinacharyaCard({ routine, weather, loading, onRegenerate }) {
       </div>
     );
   }
-  if (!routine) return <RoutineEmptyState onRegenerate={onRegenerate} />;
   return (
     <div className="space-y-4">
-      {weather && <WeatherContextBanner weather={weather} />}
-      <RoutineTimeline activities={routine.activities || []} />
+      {weather && <WeatherContextBanner weather={weather} refreshing={weatherLoading} onRefresh={onRefreshWeather} />}
+      {!routine ? (
+        <RoutineEmptyState onRegenerate={onRegenerate} />
+      ) : (
+        <RoutineTimeline activities={routine.activities || []} />
+      )}
     </div>
   );
 }

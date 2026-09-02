@@ -9,5 +9,5 @@ CORS_ALLOWED_ORIGINS = ["http://localhost:5173", "http://127.0.0.1:5173"]
 LOGGING["formatters"]["plain"]["format"] = "%(asctime)s %(levelname)s %(name)s %(message)s"  # noqa: F405
 LOGGING["root"]["level"] = "DEBUG"  # noqa: F405
 
-# OpenWeather key optional in dev: engine degrades gracefully.
+# Weather: Open-Meteo requires no API key.
 env.read_env(BASE_DIR.parent / ".env")  # noqa: F405

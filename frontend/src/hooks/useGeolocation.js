@@ -2,6 +2,7 @@ import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
 import { saveLocation, setCoords, setPermission } from "../store/locationSlice.js";
+import { getAccessToken } from "../api/client.js";
 
 export function useGeolocation({ autoRequest = true, persist = true } = {}) {
   const dispatch = useDispatch();
@@ -17,7 +18,7 @@ export function useGeolocation({ autoRequest = true, persist = true } = {}) {
       (pos) => {
         const next = { lat: pos.coords.latitude, lon: pos.coords.longitude };
         dispatch(setCoords(next));
-        if (persist) dispatch(saveLocation(next));
+        if (persist && getAccessToken()) dispatch(saveLocation(next));
       },
       () => dispatch(setPermission("denied")),
       { enableHighAccuracy: false, timeout: 10_000, maximumAge: 600_000 }

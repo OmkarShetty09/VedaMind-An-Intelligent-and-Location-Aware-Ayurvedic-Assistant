@@ -161,9 +161,8 @@ CELERY_TASK_SERIALIZER = "json"
 RAG_SERVICE_URL = env("RAG_SERVICE_URL", default="http://localhost:8001")
 RAG_ADMIN_TOKEN = env("RAG_ADMIN_TOKEN", default="dev-token")
 
-# ---- OpenWeather ----
-OPENWEATHER_API_KEY = env("OPENWEATHER_API_KEY", default="")
-OPENWEATHER_CACHE_TTL_MINUTES = env.int("OPENWEATHER_CACHE_TTL_MINUTES", default=30)
+# ---- Weather (Open-Meteo, no API key required) ----
+WEATHER_CACHE_TTL_MINUTES = env.int("WEATHER_CACHE_TTL_MINUTES", default=30)
 
 # ---- Logging (JSON in prod, structured) ----
 LOGGING = {

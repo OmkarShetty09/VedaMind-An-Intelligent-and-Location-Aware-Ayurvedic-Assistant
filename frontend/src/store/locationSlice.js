@@ -33,6 +33,10 @@ const locationSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
+      .addCase(fetchWeather.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+      })
       .addCase(fetchWeather.fulfilled, (state, action) => {
         state.weather = action.payload;
         state.status = "done";

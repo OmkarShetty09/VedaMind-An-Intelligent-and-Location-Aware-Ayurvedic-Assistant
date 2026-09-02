@@ -7,7 +7,7 @@ import { useWeather } from "../hooks/useWeather.js";
 export function DinacharyaPage() {
   const { routine, status, error, regenerate } = useDinacharya();
   const { permission, coords, request } = useGeolocation({ autoRequest: false });
-  const { weather } = useWeather();
+  const { weather, status: weatherStatus, refetchWeather } = useWeather();
 
   return (
     <div className="space-y-6">
@@ -43,7 +43,14 @@ export function DinacharyaPage() {
           {error}
         </div>
       )}
-      <DinacharyaCard routine={routine} weather={weather} loading={status === "loading"} onRegenerate={regenerate} />
+      <DinacharyaCard
+        routine={routine}
+        weather={weather}
+        weatherLoading={weatherStatus === "loading"}
+        onRefreshWeather={refetchWeather}
+        loading={status === "loading"}
+        onRegenerate={regenerate}
+      />
     </div>
   );
 }

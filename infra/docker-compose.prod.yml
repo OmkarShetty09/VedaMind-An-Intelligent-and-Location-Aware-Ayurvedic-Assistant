@@ -39,7 +39,6 @@ services:
       CELERY_RESULT_BACKEND: redis://redis:6379/2
       RAG_SERVICE_URL: http://rag:8001
       RAG_ADMIN_TOKEN: ${RAG_ADMIN_TOKEN}
-      OPENWEATHER_API_KEY: ${OPENWEATHER_API_KEY}
     depends_on:
       postgres:
         condition: service_healthy

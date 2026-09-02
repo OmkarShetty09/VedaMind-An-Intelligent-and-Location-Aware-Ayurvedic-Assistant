@@ -1,11 +1,12 @@
-from datetime import time, timedelta
+from datetime import date, datetime, time, timedelta
 
 
 def build_activities(ctx):
     """Wake, hydration, oil massage (season-adapted), tongue, movement."""
     sunrise = ctx.sunrise or time(6, 0)
-    wake = (sunrise - timedelta(minutes=30)).time()
-    muhurta_start = (sunrise - timedelta(minutes=96)).time()
+    sunrise_dt = datetime.combine(date.today(), sunrise)
+    wake = (sunrise_dt - timedelta(minutes=30)).time()
+    muhurta_start = (sunrise_dt - timedelta(minutes=96)).time()
 
     oil = "sesame" if ctx.season in ("shishir", "hemant", "vasant") else "coconut"
 
@@ -34,8 +35,8 @@ def build_activities(ctx):
         },
         {
             "time_of_day": "sunrise",
-            "start": (sunrise + timedelta(minutes=15)).time(),
-            "end": (sunrise + timedelta(minutes=45)).time(),
+            "start": (sunrise_dt + timedelta(minutes=15)).time(),
+            "end": (sunrise_dt + timedelta(minutes=45)).time(),
             "title": f"Self-massage ({oil} oil)",
             "description": f"A short abhyanga with {oil} oil before bathing.",
             "reasons": [f"{oil.title()} oil is seasonally balancing for your climate."],
@@ -45,8 +46,8 @@ def build_activities(ctx):
         },
         {
             "time_of_day": "mid_morning",
-            "start": (sunrise + timedelta(hours=2)).time(),
-            "end": (sunrise + timedelta(hours=3)).time(),
+            "start": (sunrise_dt + timedelta(hours=2)).time(),
+            "end": (sunrise_dt + timedelta(hours=3)).time(),
             "title": "Movement / exercise",
             "description": "Moderate exercise until mild perspiration; stop before exhaustion.",
             "reasons": ["Exercise supports kapha balance and digestion."],

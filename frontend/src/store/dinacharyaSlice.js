@@ -2,7 +2,14 @@ import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 import { dinacharyaApi } from "../api/dinacharya.js";
 
-export const loadRoutine = createAsyncThunk("dinacharya/load", async () => dinacharyaApi.getRoutine());
+export const loadRoutine = createAsyncThunk("dinacharya/load", async () => {
+  try {
+    return await dinacharyaApi.getRoutine();
+  } catch (err) {
+    if (err?.status === 404 || err?.status === 401) return null;
+    throw err;
+  }
+});
 export const regenerate = createAsyncThunk("dinacharya/regenerate", async () => dinacharyaApi.regenerate());
 
 const dinacharyaSlice = createSlice({

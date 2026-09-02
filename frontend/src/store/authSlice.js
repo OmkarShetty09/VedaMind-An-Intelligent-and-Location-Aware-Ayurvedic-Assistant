@@ -17,7 +17,6 @@ export const register = createAsyncThunk("auth/register", async (payload) => {
 
 export const fetchMe = createAsyncThunk("auth/me", async () => {
   const data = await authApi.me();
-  setAccessToken(data.access);
   return data;
 });
 
@@ -45,6 +44,9 @@ const authSlice = createSlice({
   reducers: {
     clearError(state) {
       state.error = null;
+    },
+    noSession(state) {
+      state.status = "anonymous";
     },
   },
   extraReducers: (builder) => {
@@ -84,5 +86,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError } = authSlice.actions;
+export const { clearError, noSession } = authSlice.actions;
 export default authSlice.reducer;
