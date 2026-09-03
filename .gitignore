@@ -24,6 +24,7 @@ dist/
 # Data (embeddings reproducible, never committed)
 data/embeddings/
 data/processed/chunks/*.jsonl
+data/processed/index_manifest.json
 
 # Django
 staticfiles/

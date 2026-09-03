@@ -1,0 +1,19 @@
+{
+  "corpus_id": "ayurwiki_yoga",
+  "title": "Ayurwiki Yoga - Asanas and Pranayama",
+  "source_type": "CLASSICAL",
+  "language": "en",
+  "author": "Ayurwiki contributors",
+  "source_url": "https://ayurwiki.org/",
+  "description": "12 popular yoga asanas and pranayama techniques",
+  "license": "CC BY-SA 4.0",
+  "attribution": "Content from Ayurwiki (ayurwiki.org) under CC BY-SA 4.0",
+  "sections": [
+    "herbs",
+    "medicines",
+    "concepts",
+    "yoga",
+    "traditions",
+    "physiology"
+  ]
+}

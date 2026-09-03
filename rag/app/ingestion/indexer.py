@@ -88,10 +88,11 @@ def run_ingestion(raw_dir: Path, chunks_dir: Path, manifest_path: Path, *, corpu
 
     logger.info("Chunked into %d chunks", len(chunks))
 
-    # 4. Validate chunks
-    empty_chunks = [c for c in chunks if not c["content"].strip()]
-    if empty_chunks:
-        raise RuntimeError(f"{len(empty_chunks)} empty chunks detected; refusing to insert.")
+    # 4. Filter out empty chunks
+    empty_count = sum(1 for c in chunks if not c["content"].strip())
+    if empty_count:
+        logger.warning("Filtered out %d empty chunks", empty_count)
+        chunks = [c for c in chunks if c["content"].strip()]
 
     # 5. Embed
     try:

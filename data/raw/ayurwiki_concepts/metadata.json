@@ -1,0 +1,19 @@
+{
+  "corpus_id": "ayurwiki_concepts",
+  "title": "Ayurwiki Concepts - Core Ayurvedic Theory",
+  "source_type": "CLASSICAL",
+  "language": "en",
+  "author": "Ayurwiki contributors",
+  "source_url": "https://ayurwiki.org/",
+  "description": "Core Ayurvedic concepts: doshas, agni, ama, dhatu, ojas, prakriti",
+  "license": "CC BY-SA 4.0",
+  "attribution": "Content from Ayurwiki (ayurwiki.org) under CC BY-SA 4.0",
+  "sections": [
+    "herbs",
+    "medicines",
+    "concepts",
+    "yoga",
+    "traditions",
+    "physiology"
+  ]
+}
