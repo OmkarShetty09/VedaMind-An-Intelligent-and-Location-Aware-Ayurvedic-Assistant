@@ -2,7 +2,6 @@
 
 import logging
 
-from django.core.cache import cache
 from django.utils import timezone
 
 from .clients import WeatherClientError, fetch_one_call
@@ -28,7 +27,10 @@ def get_weather(lat: float, lon: float) -> dict:
 
     try:
         data = fetch_one_call(lat, lon)
-        snapshot = WeatherSnapshot.objects.create(lat=lat, lon=lon, payload=data, source="open-meteo", fetched_at=timezone.now())
+        snapshot = WeatherSnapshot.objects.create(
+            lat=lat, lon=lon, payload=data,
+            source="open-meteo", fetched_at=timezone.now(),
+        )
         return {"payload": snapshot.payload, "source": snapshot.source, "fetched_at": snapshot.fetched_at}
     except WeatherClientError as exc:
         logger.warning("Weather unavailable: %s", exc)
