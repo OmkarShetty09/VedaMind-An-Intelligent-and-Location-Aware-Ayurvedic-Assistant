@@ -25,6 +25,7 @@ dist/
 data/embeddings/
 data/processed/chunks/*.jsonl
 data/processed/index_manifest.json
+ayurwiki/
 
 # Django
 staticfiles/
