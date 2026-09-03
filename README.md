@@ -12,6 +12,7 @@ RAG-powered Ayurvedic wellness guidance with a deterministic herb–drug interac
 - **Anti-hallucination** — every claim traceable to retrieved classical sources; collapsible citation chips; low-confidence answers styled distinctly
 - **Clarifying questions** — if user hasn't disclosed medications, assistant asks before recommending herbs
 - **Multi-tier LLM failover** — Gemini → Groq → Ollama with streaming, caching, and token budgeting
+- **Comprehensive knowledge base** — 375+ chunks from classical texts (Charaka, Sushruta, Ashtanga Hridaya) and Ayurwiki (5,400+ articles covering herbs, medicines, yoga, concepts, traditions)
 
 ## Services
 
@@ -131,6 +132,22 @@ infra/
   monitoring/                 # prometheus.yml, alerts.yml
   postgres/                   # init scripts (pgvector + pg_trgm extensions)
   scripts/                    # backup, restore, seed, secrets
+
+data/
+  raw/                        # Corpus sources for RAG ingestion
+    charaka_samhita/          # Classical text (44 chunks)
+    sushruta_samhita/         # Classical text (12 chunks)
+    ashtanga_hridaya/         # Classical text (12 chunks)
+    bhavaprakasha/            # Herb pharmacopeia (10 chunks)
+    nighantus/                # Herb pharmacopeia (10 chunks)
+    clinical_evidence/        # Modern clinical studies (10 chunks)
+    ayurwiki_herbs/           # 20 curated herbs from Ayurwiki (128 chunks)
+    ayurwiki_medicines/       # 10 formulations from Ayurwiki (16 chunks)
+    ayurwiki_concepts/        # Core concepts from Ayurwiki (50 chunks)
+    ayurwiki_yoga/            # Asanas & pranayama from Ayurwiki (71 chunks)
+    ayurwiki_traditions/      # Therapies from Ayurwiki (12 chunks)
+  processed/                  # Generated chunks, index manifest
+  evaluation/                 # Test queries for retrieval quality
 ```
 
 ## Testing
