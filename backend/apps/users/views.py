@@ -139,12 +139,20 @@ class LocationView(APIView):
                 "confidence": float(request.data.get("confidence", 1.0)),
             },
         )
+        if not geo.place_name:
+            from apps.weather.clients import reverse_geocode
+
+            place = reverse_geocode(geo.lat, geo.lon)
+            if place:
+                geo.place_name = place
+                geo.save(update_fields=["place_name"])
         return Response(
             {
                 "lat": geo.lat,
                 "lon": geo.lon,
                 "source": geo.source,
                 "confidence": geo.confidence,
+                "place_name": geo.place_name,
                 "updated_at": geo.updated_at,
             }
         )

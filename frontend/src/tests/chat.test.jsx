@@ -15,12 +15,26 @@ describe("MessageBubble", () => {
       <MessageBubble
         message={{
           role: "assistant",
-          content: "Answer",
-          citations: [{ source: "charaka_samhita", chapter: "S1", verse: "v.5" }],
+          content: "Answer [S1]",
+          citations: [{ id: "S1", source: "charaka_samhita", chapter: "S1", verse: "v.5" }],
         }}
       />
     );
-    expect(screen.getByText("Answer")).toBeInTheDocument();
+    expect(screen.getByText(/Answer/)).toBeInTheDocument();
+    expect(screen.getByText(/\[S1\]/)).toBeInTheDocument();
     expect(screen.getByText(/charaka_samhita/)).toBeInTheDocument();
+  });
+
+  it("renders plain text for streaming messages", () => {
+    render(
+      <MessageBubble
+        message={{
+          role: "assistant",
+          content: "Answer [S1]",
+          streaming: true,
+        }}
+      />
+    );
+    expect(screen.getByText("Answer [S1]")).toBeInTheDocument();
   });
 });

@@ -16,4 +16,5 @@ class CurrentWeatherView(APIView):
         if geo is None:
             return Response({"payload": {}, "source": "no_location", "fetched_at": None})
         result = get_weather(geo.lat, geo.lon)
+        result["location_name"] = geo.place_name or ""
         return Response(result)

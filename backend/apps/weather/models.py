@@ -41,6 +41,7 @@ class GeoLocation(models.Model):
     accuracy = models.FloatField(default=0.0)  # meters; 0 = unknown
     source = models.CharField(max_length=16, default="gps")  # gps | ip | user | default
     confidence = models.FloatField(default=1.0)
+    place_name = models.CharField(max_length=255, blank=True, default="")
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):

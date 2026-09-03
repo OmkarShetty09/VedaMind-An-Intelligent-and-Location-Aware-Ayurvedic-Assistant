@@ -1,7 +1,12 @@
+import { CitationMarker } from "./CitationMarker.jsx";
 import { SourceCitation } from "./SourceCitation.jsx";
+import { parseCitations } from "../../utils/parseCitations.js";
 
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
+  const showCitations = !isUser && !message.streaming && message.citations?.length > 0;
+  const segments = showCitations ? parseCitations(message.content) : null;
+
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
@@ -13,7 +18,21 @@ export function MessageBubble({ message }) {
               : "rounded-2xl rounded-bl-md border border-line bg-white text-text shadow-soft"
         }`}
       >
-        <div className="whitespace-pre-wrap">{message.content}</div>
+        <div className="whitespace-pre-wrap">
+          {segments
+            ? segments.map((seg, i) =>
+                seg.type === "citation" ? (
+                  <CitationMarker
+                    key={i}
+                    id={seg.id}
+                    citation={message.citations.find((c) => c.id === seg.id)}
+                  />
+                ) : (
+                  <span key={i}>{seg.value}</span>
+                )
+              )
+            : message.content}
+        </div>
         {message.streaming && (
           <span className="ml-0.5 inline-block animate-pulse text-brand">|</span>
         )}

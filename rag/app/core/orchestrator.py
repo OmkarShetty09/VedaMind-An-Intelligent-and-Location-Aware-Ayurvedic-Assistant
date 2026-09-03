@@ -35,7 +35,10 @@ _jailbreak = JailbreakDetector()
 
 _GREETING_RE = re.compile(
     r"^\s*(?:hi+|hello+|hey+|namaste|namaskar|good\s+(?:morning|afternoon|evening|night)"
-    r"|howdy|greetings|what'?s\s+up|sup|hola|yo)\s*[!.?]*\s*$",
+    r"|howdy|greetings|what'?s\s+up|sup|hola|yo"
+    r"|how\s+are\s+you(?:\s+doing)?|how'?s\s+it\s+going|how\s+do\s+you\s+do"
+    r"|how\s+have\s+you\s+been|what'?s\s+happening|how'?s\s+everything"
+    r"|how\s+is\s+it\s+going)\s*[!.?]*\s*$",
     re.IGNORECASE,
 )
 

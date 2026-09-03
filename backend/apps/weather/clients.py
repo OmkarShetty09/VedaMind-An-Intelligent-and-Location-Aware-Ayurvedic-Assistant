@@ -40,7 +40,12 @@ def fetch_one_call(lat: float, lon: float) -> dict:
             params={
                 "latitude": lat,
                 "longitude": lon,
-                "current": "temperature_2m,relative_humidity_2m,apparent_temperature,weather_code,wind_speed_10m",
+                "current": (
+                    "temperature_2m,relative_humidity_2m,apparent_temperature,"
+                    "weather_code,wind_speed_10m,wind_direction_10m,wind_gusts_10m,"
+                    "pressure_msl,cloud_cover,precipitation,uv_index,visibility,"
+                    "dew_point_2m"
+                ),
                 "timezone": "auto",
             },
             timeout=_TIMEOUT,
@@ -76,6 +81,33 @@ def _normalize(data: dict) -> dict:
             "humidity": raw.get("relative_humidity_2m"),
             "feels_like": raw.get("apparent_temperature"),
             "wind_speed": raw.get("wind_speed_10m"),
+            "wind_direction": raw.get("wind_direction_10m"),
+            "wind_gusts": raw.get("wind_gusts_10m"),
+            "pressure": raw.get("pressure_msl"),
+            "cloud_cover": raw.get("cloud_cover"),
+            "precipitation": raw.get("precipitation"),
+            "uv_index": raw.get("uv_index"),
+            "visibility": raw.get("visibility"),
+            "dew_point": raw.get("dew_point_2m"),
             "weather": [{"description": description}],
         },
     }
+
+
+def reverse_geocode(lat: float, lon: float) -> str:
+    """Return 'City, State' from coordinates via Nominatim. Empty string on failure."""
+    try:
+        resp = httpx.get(
+            "https://nominatim.openstreetmap.org/reverse",
+            params={"lat": lat, "lon": lon, "format": "json", "zoom": 10},
+            headers={"User-Agent": "VedaMind/1.0", "Referer": "https://vedamind.local"},
+            timeout=5.0,
+        )
+        addr = resp.json().get("address", {})
+        city = addr.get("city") or addr.get("town") or addr.get("village") or ""
+        state = addr.get("state", "")
+        if city and state and city != state:
+            return f"{city}, {state}"
+        return city or state
+    except Exception:
+        return ""
