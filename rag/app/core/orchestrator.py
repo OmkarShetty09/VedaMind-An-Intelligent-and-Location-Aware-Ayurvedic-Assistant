@@ -8,7 +8,7 @@ the full answer is buffered in parallel for post-stream cache writes.
 import logging
 import re
 import time
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from app.config import get_settings
 from app.guardrails import rules_client, secondary_check
@@ -337,7 +337,7 @@ def _split_tokens(text: str, size: int = 40) -> Iterator[str]:
         yield streaming.token_event(text[i : i + size])
 
 
-def _stream_and_buffer(source: Iterator[str], buf: list[str], on_first_token: callable | None = None) -> Iterator[str]:
+def _stream_and_buffer(source: Iterator[str], buf: list[str], on_first_token: Callable[[], None] | None = None) -> Iterator[str]:
     """Yield SSE token events from *source* while buffering raw text into *buf*.
 
     After the generator is exhausted *buf* contains the full answer text,
