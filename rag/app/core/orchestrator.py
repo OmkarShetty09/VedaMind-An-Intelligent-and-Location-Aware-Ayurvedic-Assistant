@@ -1,12 +1,13 @@
 """THE RAG pipeline: retrieve -> guardrail -> generate -> verify -> stream.
 
 Every step is versioned and traced. Generation is skipped entirely on
-BLOCK / NEEDS_REVIEW. Answers are buffered and grounding-verified BEFORE any
-token reaches the user (safety over raw streaming latency).
+BLOCK / NEEDS_REVIEW. Tokens are streamed to the client as they arrive;
+the full answer is buffered in parallel for post-stream cache writes.
 """
 
 import logging
 import re
+import time
 from collections.abc import Iterator
 
 from app.config import get_settings
@@ -214,7 +215,7 @@ def run(
         yield streaming.done_event(blocked=False, tokens=cached["tokens"], model="cache")
         return
 
-    # 7. generate (buffered, then verified)
+    # 7. generate — true streaming with buffered cache write
     with span("generate", model=settings.llm_primary_model):
         chip = _build_context_chip(context)
         if chip:
@@ -230,24 +231,25 @@ def run(
             location_context=_format_location(context.get("location"), context.get("weather")),
         )
         messages.insert(1, {"role": "system", "content": SYSTEM_GUARD})
-        answer = "".join(router.generate(messages, tier="primary"))
+
+        answer_buf: list[str] = []
+        _ttft_start = time.monotonic()
+        yield from _stream_and_buffer(
+            router.generate(messages, tier="primary"),
+            answer_buf,
+            on_first_token=lambda: logger.info(
+                "ttft", extra={"step": "ttft", "duration_ms": round((time.monotonic() - _ttft_start) * 1000, 1)},
+            ),
+        )
+
+        answer = "".join(answer_buf)
         if not answer.strip():
             raise PipelineError("Empty generation from providers", recoverable=True)
 
-    # 8. grounding verification (skip for now — system prompt enforces citation discipline)
-    # with span("verify"):
-    #     grounded = verify_grounding(answer, assembled)
-    #     if not grounded:
-    #         logger.warning("Grounding verification failed; replacing with refusal.")
-    #         yield streaming.low_confidence_event()
-    #         answer = refusal_text()
-
-    for token in _split_tokens(answer):
-        yield token
-    yield streaming.citation_event(citations.to_payload())
-    yield streaming.done_event(blocked=False, tokens=token_budget.estimate_tokens(answer), model=settings.llm_primary_model)
-    llm_cache.set_cached(key, {"answer": answer, "tokens": token_budget.estimate_tokens(answer)},
-                         settings.query_cache_ttl_hours)
+        yield streaming.citation_event(citations.to_payload())
+        yield streaming.done_event(blocked=False, tokens=token_budget.estimate_tokens(answer), model=settings.llm_primary_model)
+        llm_cache.set_cached(key, {"answer": answer, "tokens": token_budget.estimate_tokens(answer)},
+                             settings.query_cache_ttl_hours)
 
 
 def verify_grounding(answer: str, passages: list[dict]) -> bool:
@@ -333,3 +335,21 @@ def _format_location(location: dict | None, weather: dict | None) -> str | None:
 def _split_tokens(text: str, size: int = 40) -> Iterator[str]:
     for i in range(0, len(text), size):
         yield streaming.token_event(text[i : i + size])
+
+
+def _stream_and_buffer(source: Iterator[str], buf: list[str], on_first_token: callable | None = None) -> Iterator[str]:
+    """Yield SSE token events from *source* while buffering raw text into *buf*.
+
+    After the generator is exhausted *buf* contains the full answer text,
+    suitable for writing to the LLM response cache.  *on_first_token*, if
+    provided, is called (with no arguments) the moment the first token chunk
+    arrives from *source* — intended for TTFT measurement.
+    """
+    first = True
+    for chunk in source:
+        if first:
+            first = False
+            if on_first_token is not None:
+                on_first_token()
+        buf.append(chunk)
+        yield streaming.token_event(chunk)
