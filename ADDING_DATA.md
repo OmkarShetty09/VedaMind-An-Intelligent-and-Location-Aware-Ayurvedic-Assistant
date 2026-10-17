@@ -123,6 +123,7 @@ mv book.md data/raw/<your_source_id>/source.md
 
 ```bash
 cd rag
+# Windows: use .venv\Scripts\python instead of python (or run scripts\windows\ingest.ps1 for the full ingest)
 python -m app.ingestion status
 python -m app.ingestion validate
 ```
@@ -167,8 +168,9 @@ Check that:
 Test retrieval:
 
 ```bash
-curl -X POST http://localhost:8001/api/v1/query \
+curl -X POST http://127.0.0.1:8001/api/v1/retrieve \
   -H "Content-Type: application/json" \
+  -H "X-RAG-Admin-Token: <RAG_ADMIN_TOKEN from .env>" \
   -d '{"query": "a topic from your new book"}'
 ```
 

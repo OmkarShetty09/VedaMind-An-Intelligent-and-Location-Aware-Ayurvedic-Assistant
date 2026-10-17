@@ -1,14 +1,20 @@
+from django.conf import settings
 from django.contrib.auth import authenticate
 from django.core.cache import cache
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
+from rest_framework_simplejwt.exceptions import TokenError
+from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenRefreshView
 
 from .serializers import (
+    ConditionsUpdateSerializer,
+    LocationSerializer,
     MedsUpdateSerializer,
     MeSerializer,
     RegisterSerializer,
+    UserConditionSerializer,
     UserMedicationSerializer,
 )
 from .services import blacklist_refresh, clear_refresh_cookie, issue_tokens, set_refresh_cookie
@@ -58,23 +64,46 @@ class RefreshView(TokenRefreshView):
     """
 
     def post(self, request, *args, **kwargs):
-        request.data["refresh"] = request.COOKIES.get("refresh")
-        response = super().post(request, *args, **kwargs)
-        if response.status_code == status.HTTP_200_OK:
-            set_refresh_cookie(response, response.data.pop("refresh"))
-        else:
-            clear_refresh_cookie(response)
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
+        if not refresh:
+            return self._rejected("No refresh session.")
+        serializer = self.get_serializer(data={"refresh": refresh})
+        try:
+            serializer.is_valid(raise_exception=True)
+        except TokenError:
+            return self._rejected("Session expired. Please sign in again.")
+        data = dict(serializer.validated_data)
+        response = Response({"access": data["access"]})
+        if data.get("refresh"):
+            set_refresh_cookie(response, data["refresh"])
         return response
+
+    @staticmethod
+    def _rejected(message):
+        response = Response(
+            {"error": {"code": "token_not_valid", "message": message}}, status=status.HTTP_401_UNAUTHORIZED
+        )
+        return clear_refresh_cookie(response)
 
 
 class LogoutView(APIView):
-    """POST /api/v1/auth/logout - blacklists refresh, clears cookie."""
+    """POST /api/v1/auth/logout - blacklists refresh, clears cookie.
+
+    Works with just the refresh cookie, so an expired access token can still sign out.
+    """
+
+    authentication_classes = ()
+    permission_classes = [permissions.AllowAny]
 
     def post(self, request):
-        refresh = request.COOKIES.get("refresh")
+        refresh = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
         if refresh:
+            try:
+                user_id = RefreshToken(refresh).get(settings.SIMPLE_JWT.get("USER_ID_CLAIM", "user_id"))
+                cache.delete(f"consent:{user_id}")
+            except TokenError:
+                pass
             blacklist_refresh(refresh)
-        cache.delete(f"consent:{getattr(request.user, 'id', '')}")
         return clear_refresh_cookie(Response(status=status.HTTP_204_NO_CONTENT))
 
 
@@ -101,6 +130,20 @@ class MedsView(generics.GenericAPIView):
         )
 
 
+class ConditionsView(generics.GenericAPIView):
+    """PATCH /api/v1/users/me/conditions - replaces active condition list."""
+
+    serializer_class = ConditionsUpdateSerializer
+
+    def patch(self, request, *args, **kwargs):
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        serializer.update_user(request.user)
+        return Response(
+            UserConditionSerializer(request.user.conditions.filter(active=True), many=True).data
+        )
+
+
 class ConsentView(APIView):
     """POST /api/v1/users/me/consent - records informed consent (append-only)."""
 
@@ -122,21 +165,26 @@ class LocationView(APIView):
     def post(self, request):
         from apps.weather.models import GeoLocation
 
-        lat = request.data.get("lat")
-        lon = request.data.get("lon")
-        if lat is None or lon is None or not (-90 <= float(lat) <= 90) or not (-180 <= float(lon) <= 180):
+        serializer = LocationSerializer(data=request.data)
+        if not serializer.is_valid():
             return Response(
-                {"error": {"code": "invalid_location", "message": "lat/lon out of range."}},
+                {"error": {"code": "invalid_location", "message": "lat/lon missing or out of range.",
+                           "fields": serializer.errors}},
                 status=status.HTTP_400_BAD_REQUEST,
             )
+        data = serializer.validated_data
+        previous = GeoLocation.objects.filter(user=request.user).first()
+        # ~5 km: beyond this the stored place name no longer describes where the user is.
+        moved = previous is None or abs(previous.lat - data["lat"]) > 0.05 or abs(previous.lon - data["lon"]) > 0.05
         geo, _ = GeoLocation.objects.update_or_create(
             user=request.user,
             defaults={
-                "lat": float(lat),
-                "lon": float(lon),
-                "accuracy": float(request.data.get("accuracy", 0.0)),
-                "source": str(request.data.get("source", "gps"))[:16],
-                "confidence": float(request.data.get("confidence", 1.0)),
+                "lat": data["lat"],
+                "lon": data["lon"],
+                "accuracy": data["accuracy"],
+                "source": data["source"],
+                "confidence": data["confidence"],
+                **({"place_name": data["place_name"]} if (moved or data["place_name"]) else {}),
             },
         )
         if not geo.place_name:

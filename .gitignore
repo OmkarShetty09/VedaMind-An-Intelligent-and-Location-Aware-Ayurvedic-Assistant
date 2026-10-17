@@ -41,3 +41,5 @@ Thumbs.db
 
 # Docker
 *.tar
+# Local Windows dev infra (scripts/windows/infra.ps1)
+.localdev/

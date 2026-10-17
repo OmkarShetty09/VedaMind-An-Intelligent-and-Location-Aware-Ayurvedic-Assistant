@@ -18,4 +18,4 @@ def send_consent_confirmation_email(user_id):
 @shared_task
 def deactivate_inactive_users(days=365):
     cutoff = timezone.now() - timedelta(days=days)
-    return User.objects.filter(last_login__isnull=True, date_joined__lt=cutoff).update(is_active=False)
+    return User.objects.filter(last_login__isnull=True, created_at__lt=cutoff).update(is_active=False)

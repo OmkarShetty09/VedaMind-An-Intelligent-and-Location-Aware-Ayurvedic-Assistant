@@ -33,7 +33,7 @@ export function DinacharyaCard({ routine, weather, weatherLoading, onRefreshWeat
       {!routine ? (
         <RoutineEmptyState onRegenerate={onRegenerate} />
       ) : (
-        <RoutineTimeline activities={routine.activities || []} />
+        <RoutineTimeline activities={routine.activities || []} seasonInfo={routine.season_info} />
       )}
     </div>
   );

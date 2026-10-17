@@ -10,7 +10,6 @@ from app.config import get_settings
 
 from .decision import GuardrailResult
 
-_TIMEOUT = 15.0
 
 
 def check(
@@ -24,6 +23,7 @@ def check(
         "text": text[:4000],
         "context": {
             "conditions": context.get("conditions", []),
+            "medications": context.get("medications", []),
             "pregnancy": bool(context.get("pregnancy")),
             "pediatric": bool(context.get("pediatric")),
         },
@@ -37,7 +37,7 @@ def check(
             settings.backend_guardrail_url,
             json=payload,
             headers={"X-RAG-Admin-Token": settings.rag_admin_token},
-            timeout=_TIMEOUT,
+            timeout=settings.guardrail_timeout_seconds,
         )
         resp.raise_for_status()
         data = resp.json()
@@ -46,6 +46,7 @@ def check(
             severity=data.get("severity", "unknown"),
             reason_code=data.get("reason_code", "unknown"),
             matches=data.get("matches", []),
+            entities=data.get("entities") or {},
         )
     except (httpx.HTTPError, ValueError) as exc:
         # Fail closed: rules engine unreachable must never mean "safe".

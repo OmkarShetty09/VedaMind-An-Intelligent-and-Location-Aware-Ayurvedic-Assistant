@@ -43,7 +43,8 @@ def build_context_bundle(user, recent_messages, client_location=None):
         if client_location.get("season"):
             weather["season"] = client_location["season"]
 
-    season = _infer_season(weather)
+    lat = (location_data or {}).get("lat")
+    season = _infer_season(weather, northern=lat is None or lat >= 0)
 
     return {
         "dosha": {
@@ -63,18 +64,14 @@ def build_context_bundle(user, recent_messages, client_location=None):
     }
 
 
-def _infer_season(weather):
+def _infer_season(weather, northern=True):
+    """Classical ritu, from the same calendar the Dinacharya engine uses so chat and routine agree."""
     season = weather.get("season")
     if season:
         return season
     import datetime
-    month = datetime.date.today().month
-    if month in (6, 7, 8, 9):
-        return "monsoon"
-    if month in (10, 11):
-        return "autumn"
-    if month in (12, 1, 2):
-        return "winter"
-    if month in (3, 4, 5):
-        return "spring"
-    return "summer"
+
+    from apps.dinacharya.ritu import season_for, season_info
+
+    info = season_info(season_for(datetime.date.today(), northern=northern))
+    return f"{info['key'].title()} ({info['english']})"

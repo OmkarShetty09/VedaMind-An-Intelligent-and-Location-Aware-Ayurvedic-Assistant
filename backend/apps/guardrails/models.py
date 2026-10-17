@@ -67,3 +67,21 @@ class HerbAlias(models.Model):
 
     def __str__(self):
         return f"{self.alias} -> {self.canonical_herb}"
+
+
+class DrugAlias(models.Model):
+    """Drug vocabulary: what users type (generic, brand, class word) -> the name rules are written against.
+
+    `classes` on a generic's own row lists the drug classes it belongs to (warfarin -> anticoagulants),
+    so a rule written for a class also matches its members.
+    """
+
+    alias = models.CharField(max_length=120, unique=True)
+    canonical = models.CharField(max_length=120, db_index=True)
+    classes = models.JSONField(default=list, blank=True)
+
+    class Meta:
+        verbose_name_plural = "drug aliases"
+
+    def __str__(self):
+        return f"{self.alias} -> {self.canonical}"

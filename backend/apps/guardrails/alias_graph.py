@@ -54,6 +54,10 @@ class AliasGraph:
             return ResolvedEntity(self._by_alias[best[0]].canonical, text, ALIAS_MATCH_THRESHOLD, False)
         return None
 
+    def resolve_exact(self, text: str) -> ResolvedEntity | None:
+        """Exact alias hit only (no fuzzy matching) - used for multi-word phrases."""
+        return self._by_alias.get(normalize(text))
+
     def resolve_ambiguous(self, text: str) -> tuple[ResolvedEntity | None, float]:
         """Return (entity, confidence). Confidence < threshold signals ambiguity."""
         if not normalize(text):
@@ -77,11 +81,16 @@ _DEFAULT_GRAPH: AliasGraph | None = None
 
 def get_default_graph() -> AliasGraph:
     global _DEFAULT_GRAPH
-    if _DEFAULT_GRAPH is None:
+    # An empty graph means it was built before `seed_demo_data` ran; rebuild instead of caching nothing forever.
+    if _DEFAULT_GRAPH is None or not _DEFAULT_GRAPH._by_alias:
         _DEFAULT_GRAPH = AliasGraph.build_from_db()
     return _DEFAULT_GRAPH
 
 
 def reset_graph_cache():
+    """Drop the cached herb graph and drug lexicon (after seeding or an admin edit)."""
     global _DEFAULT_GRAPH
     _DEFAULT_GRAPH = None
+    from .drug_lexicon import reset_lexicon_cache
+
+    reset_lexicon_cache()

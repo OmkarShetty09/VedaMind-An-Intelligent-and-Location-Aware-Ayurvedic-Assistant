@@ -4,7 +4,9 @@ import request from "./client.js";
 export const weatherApi = {
   current: async () => {
     const raw = await request(endpoints.weather);
-    const current = raw?.payload?.current || {};
+    // No saved location (source "no_location") or provider down: there is no weather to show.
+    if (!raw?.payload?.current) return null;
+    const current = raw.payload.current;
     return {
       location_name: raw?.location_name || null,
       temp_c: current.temp ?? null,

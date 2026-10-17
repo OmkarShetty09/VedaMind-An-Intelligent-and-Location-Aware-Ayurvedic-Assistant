@@ -57,7 +57,7 @@ def test_nonempty_kb_proceeds_to_retrieval(monkeypatch):
     monkeypatch.setattr(orchestrator, "rerank", lambda ps, q: ps)
     monkeypatch.setattr(orchestrator.rules_client, "check", lambda *a: GuardrailResult("pass", "low", "no_match", []))
     monkeypatch.setattr(orchestrator, "render_system_grounded", lambda items, user, **kw: [{"role": "system", "content": ""}])
-    monkeypatch.setattr(orchestrator.router, "generate", lambda messages, tier: "Answer based on passage [S1].")
+    monkeypatch.setattr(orchestrator.router, "generate", lambda messages, tier, **kw: "Answer based on passage [S1].")
     monkeypatch.setattr(orchestrator, "verify_grounding", lambda a, p: True)
     monkeypatch.setattr(llm_cache, "get_cached", lambda key: None)
     monkeypatch.setattr(llm_cache, "set_cached", lambda key, payload, ttl: None)

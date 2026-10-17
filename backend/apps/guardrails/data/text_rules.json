@@ -1,0 +1,35 @@
+{
+  "_comment": "Tokenisation rules for guardrail entity extraction. Drug and herb names live in the database (admin).",
+  "drug_stems": [
+    "pril", "sartan", "olol", "dipine", "statin", "prazole", "tidine", "mycin", "cillin", "floxacin",
+    "cycline", "azepam", "zolam", "barbital", "triptan", "oxetine", "pramine", "gliptin", "glitazone",
+    "gliflozin", "formin", "thiazide", "semide", "parin", "xaban", "gatran", "grel", "profen", "fenac",
+    "coxib", "olone", "lukast", "conazole"
+  ],
+  "drug_stem_min_length": 6,
+  "not_drugs": ["april"],
+  "dose_words": ["mg", "mcg", "ml", "tab", "tabs", "cap", "caps", "units", "unit", "drops", "syrup", "injection"],
+  "filler_words": [
+    "and", "the", "with", "for", "from", "take", "taking", "taken", "give", "dose", "dosage",
+    "mg", "g", "gram", "grams", "tablet", "tablets", "capsule", "capsules", "tea", "spoon",
+    "every", "daily", "once", "twice", "before", "after", "meal", "food", "herb", "herbs", "drug",
+    "medicine", "medication", "please", "what", "can", "should", "i", "my", "me", "am", "is", "are",
+    "have", "has", "had", "fever", "tell", "about", "know", "information", "help",
+    "how", "when", "where", "why", "which", "that", "this", "these", "those", "some", "any",
+    "all", "most", "much", "many", "very", "really", "just", "also", "too", "only", "even",
+    "now", "then", "here", "there", "well", "still", "already", "yet", "ever", "never",
+    "does", "do", "did", "was", "were", "been", "being", "will", "would", "could",
+    "may", "might", "shall", "must", "need", "want", "like", "prefer", "suggest", "recommend",
+    "good", "bad", "best", "worst", "better", "worse", "right", "wrong", "sure", "think",
+    "feel", "feeling", "getting", "going", "coming", "doing", "making", "using", "trying",
+    "today", "yesterday", "tomorrow", "morning", "evening", "night", "day", "week", "month",
+    "year", "time", "long", "short", "old", "new", "first", "last", "next", "previous",
+    "high", "low", "medium", "large", "small", "big", "little", "great", "tiny",
+    "say", "said", "told", "ask", "asked", "answer", "reply", "respond",
+    "see", "look", "watch", "hear", "listen", "read", "write", "type", "speak", "talk",
+    "come", "go", "move", "run", "walk", "stop", "start", "begin", "end", "finish",
+    "eat", "drink", "sleep", "wake", "rest", "work", "play", "study", "learn", "teach",
+    "get", "put", "keep", "let", "make", "find", "show", "turn", "use",
+    "try", "love", "hate", "care", "miss", "remember"
+  ]
+}

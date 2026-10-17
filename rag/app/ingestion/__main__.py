@@ -9,17 +9,17 @@ Usage:
 import argparse
 import logging
 import sys
-from pathlib import Path
+
+from app.config import get_settings
 
 logging.basicConfig(level=logging.INFO, format="%(levelname)s %(name)s: %(message)s")
 logger = logging.getLogger("rag.ingestion.cli")
 
-DATA_ROOT = Path(__file__).resolve().parents[3] / "data"
 
 
 def cmd_status(args):
     from .indexer import scan_sources
-    sources = scan_sources(DATA_ROOT / "raw")
+    sources = scan_sources(get_settings().data_dir / "raw")
     print(f"\n{'='*60}")
     print(f"{'CORPUS STATUS':^60}")
     print(f"{'='*60}")
@@ -40,7 +40,7 @@ def cmd_status(args):
 
 def cmd_validate(args):
     from .indexer import scan_sources
-    raw_dir = DATA_ROOT / "raw"
+    raw_dir = get_settings().data_dir / "raw"
     sources = scan_sources(raw_dir)
     issues = []
     for s in sources:
@@ -61,17 +61,18 @@ def cmd_validate(args):
 
 
 def cmd_ingest(args):
+    from .embeddings import EmbeddingUnavailable
     from .indexer import run_ingestion
-    raw_dir = DATA_ROOT / "raw"
-    chunks_dir = DATA_ROOT / "processed" / "chunks"
-    manifest_path = DATA_ROOT / "processed" / "index_manifest.json"
+    raw_dir = get_settings().data_dir / "raw"
+    chunks_dir = get_settings().data_dir / "processed" / "chunks"
+    manifest_path = get_settings().data_dir / "processed" / "index_manifest.json"
     try:
         count = run_ingestion(
             raw_dir, chunks_dir, manifest_path,
             corpus_id=args.corpus,
         )
         print(f"\nIngestion complete: {count} chunks upserted.")
-    except RuntimeError as e:
+    except (RuntimeError, EmbeddingUnavailable) as e:
         print(f"\nIngestion failed: {e}", file=sys.stderr)
         sys.exit(1)
 
@@ -79,7 +80,7 @@ def cmd_ingest(args):
 def cmd_report(args):
     """Full report: status + DB chunk counts."""
     from .indexer import scan_sources
-    sources = scan_sources(DATA_ROOT / "raw")
+    sources = scan_sources(get_settings().data_dir / "raw")
     print(f"\n{'='*60}")
     print(f"{'VEDAMIND RAG REPORT':^60}")
     print(f"{'='*60}")
@@ -87,11 +88,11 @@ def cmd_report(args):
     # Corpus status
     print("\n[CORPUS SOURCES]")
     for s in sources:
-        status_marker = "✓" if s["status"] == "READY" else "✗" if s["status"] == "NOT_AVAILABLE" else "?"
+        status_marker = "[ok]" if s["status"] == "READY" else "[--]" if s["status"] == "NOT_AVAILABLE" else "[??]"
         print(f"  {status_marker} {s['name']}: {s['status']}")
 
     # Manifest
-    manifest_path = DATA_ROOT / "processed" / "index_manifest.json"
+    manifest_path = get_settings().data_dir / "processed" / "index_manifest.json"
     if manifest_path.exists():
         from .manifest import read_manifest
         m = read_manifest(manifest_path)

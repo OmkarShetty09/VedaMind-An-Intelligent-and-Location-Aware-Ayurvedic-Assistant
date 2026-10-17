@@ -30,3 +30,46 @@ class DoshaAssessment(TimestampedModel):
 
     def __str__(self):
         return f"{self.user_id}: {self.quiz_version} @ {self.created_at.isoformat()}"
+
+
+class DoshaInfo(models.Model):
+    """Display content for each dosha (result screen). Edited in the admin."""
+
+    dosha = models.CharField(max_length=10, unique=True, choices=[(d, d) for d in DOSHAS])
+    label = models.CharField(max_length=40)
+    element = models.CharField(max_length=60)
+    tagline = models.CharField(max_length=120)
+    description = models.TextField()
+    order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["order"]
+        verbose_name_plural = "dosha info"
+
+    def __str__(self):
+        return self.label
+
+
+class QuizQuestion(models.Model):
+    """One Prakriti quiz question. `options` = [{"text": ..., "dosha": "vata"|"pitta"|"kapha"}, ...]."""
+
+    key = models.SlugField(max_length=60, unique=True)
+    section = models.CharField(max_length=80)
+    prompt = models.CharField(max_length=200)
+    options = models.JSONField(default=list)
+    order = models.PositiveSmallIntegerField(default=0)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return f"{self.order}. {self.prompt}"
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+
+        if len(self.options) < 2 or any(o.get("dosha") not in DOSHAS or not o.get("text") for o in self.options):
+            raise ValidationError(
+                {"options": 'Give at least two options, each {"text": ..., "dosha": vata|pitta|kapha}.'}
+            )

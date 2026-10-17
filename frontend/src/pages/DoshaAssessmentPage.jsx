@@ -4,127 +4,9 @@ import { useNavigate } from "react-router-dom";
 
 import { DoshaResultChart } from "../components/dosha/DoshaResultChart.jsx";
 import { useAuthContext } from "../contexts/AuthContext.jsx";
-import { clearResult, loadProfile, submitQuiz } from "../store/doshaSlice.js";
+import { clearResult, loadProfile, loadQuiz, submitQuiz } from "../store/doshaSlice.js";
 import { store } from "../store/index.js";
 
-const STEPS = [
-  {
-    section: "Physical Characteristics",
-    questions: [
-      {
-        key: "body_frame",
-        q: "Body Frame & Build",
-        options: [
-          "Slender, light, thin frame; hard to gain weight.",
-          "Medium, athletic build; moderate muscle tone; can gain/lose weight easily.",
-          "Solid, large, broad frame; sturdy build; gains weight easily, loses it slowly.",
-        ],
-      },
-      {
-        key: "skin_type",
-        q: "Skin Type",
-        options: [
-          "Dry, rough, thin, cool to the touch, prone to cracking.",
-          "Warm, reddish, oily in the T-zone, prone to inflammation, acne, or freckles.",
-          "Thick, smooth, moist, soft, cool, oily skin.",
-        ],
-      },
-      {
-        key: "hair_texture",
-        q: "Hair Texture",
-        options: [
-          "Dry, thin, coarse, curly, or prone to split ends.",
-          "Fine, straight, soft, early graying or thinning/balding.",
-          "Thick, dark, wavy, lustrous, and strong.",
-        ],
-      },
-      {
-        key: "joints_mobility",
-        q: "Joints & Mobility",
-        options: [
-          "Small joints; prominent bones; joints tend to crack or pop.",
-          "Flexible, medium-sized joints; warm and comfortable.",
-          "Large, sturdy, well-padded joints with high flexibility.",
-        ],
-      },
-    ],
-  },
-  {
-    section: "Physiology & Metabolism",
-    questions: [
-      {
-        key: "appetite_digestion",
-        q: "Appetite & Digestion",
-        options: [
-          "Irregular, variable appetite; prone to gas, bloating, or constipation.",
-          "Strong, intense appetite; gets irritable if meals are delayed; prone to acid reflux.",
-          "Steady, slow appetite; can skip meals easily without discomfort; slow digestion.",
-        ],
-      },
-      {
-        key: "climate_preference",
-        q: "Weather & Climate Preference",
-        options: [
-          "Dislikes cold and wind; loves warm, humid climates.",
-          "Dislikes heat and bright sun; prefers cool, well-ventilated places.",
-          "Dislikes cold and damp/rainy weather; prefers warm, dry environments.",
-        ],
-      },
-      {
-        key: "sleep_quality",
-        q: "Sleep Quality",
-        options: [
-          "Light sleeper, restless, easily awakened, prone to insomnia.",
-          "Sound, moderate sleeper (6–8 hours); can wake up easily if needed.",
-          "Deep, heavy sleeper (8+ hours); finds it hard to wake up in the morning.",
-        ],
-      },
-      {
-        key: "energy_stamina",
-        q: "Energy & Stamina",
-        options: [
-          "Bursts of high energy followed by sudden fatigue; low endurance.",
-          "High, focused energy; strong stamina; driven to accomplish goals.",
-          "Steady, reliable energy; high endurance, but takes time to get started.",
-        ],
-      },
-    ],
-  },
-  {
-    section: "Mind, Emotions & Behavior",
-    questions: [
-      {
-        key: "learning_memory",
-        q: "Learning & Memory Style",
-        options: [
-          "Learns very quickly, but forgets quickly too.",
-          "Medium-paced learner; distinct understanding; remembers what is useful.",
-          "Learns slowly, but retains information for a long time (strong long-term memory).",
-        ],
-      },
-      {
-        key: "stress_reaction",
-        q: "Reaction to Stress",
-        options: [
-          "Anxiety, worry, fear, overthinking, agitation.",
-          "Anger, impatience, frustration, irritability, criticism.",
-          "Stubbornness, withdrawal, complacency, emotional eating.",
-        ],
-      },
-      {
-        key: "spending_habits",
-        q: "Spending & Money Habits",
-        options: [
-          "Impulsive spender; spends money quickly on short-term wants.",
-          "Spends money intentionally on quality, luxury, or practical items.",
-          "Saver by nature; accumulates wealth and hates spending unnecessarily.",
-        ],
-      },
-    ],
-  },
-];
-
-const ALL_QUESTIONS = STEPS.flatMap((s) => s.questions);
 
 export function DoshaAssessmentPage() {
   const dispatch = useDispatch();
@@ -132,13 +14,16 @@ export function DoshaAssessmentPage() {
   const [step, setStep] = useState(0);
   const [answers, setAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
+  const [retake, setRetake] = useState(false);
   const { consentAccepted, acceptConsent } = useAuthContext();
-  const { result, profile, status } = useSelector((s) => s.dosha);
-  const fromChat = window.location.state?.fromChat;
+  const { result, profile, error, quiz, quizError } = useSelector((s) => s.dosha);
+  // Questions and dosha descriptions are managed in the admin (QuizQuestion / DoshaInfo).
+  const ALL_QUESTIONS = quiz?.questions || [];
 
   useEffect(() => {
     store.dispatch(loadProfile());
-  }, []);
+    if (!quiz) store.dispatch(loadQuiz());
+  }, [quiz]);
 
   useEffect(() => {
     if (result?.results) {
@@ -182,12 +67,16 @@ export function DoshaAssessmentPage() {
     );
   }
 
-  if (result?.results || (profile?.dominant_dosha && fromChat)) {
-    const primary = result?.results?.primary || profile?.dominant_dosha;
-    const secondary = result?.results?.secondary_dosha || result?.results?.secondary || profile?.secondary_dosha || "";
-    const scores = result?.results?.scores || profile?.scores || {};
-    const percentages = result?.results?.percentages || {};
-    const classification = result?.results?.classification || "single";
+  if (result?.results || (profile?.dominant_dosha && !retake)) {
+    const primary = result?.results?.dominant_dosha || profile?.dominant_dosha;
+    const secondary = result?.results?.secondary_dosha || profile?.secondary_dosha || "";
+    // A freshly computed result carries `scores`; a stored profile keeps them as `vikriti_scores`.
+    const scores = result?.results?.scores || profile?.scores || profile?.vikriti_scores || {};
+    const total = Object.values(scores).reduce((a, b) => a + b, 0) || 1;
+    const percentages =
+      result?.results?.percentages ||
+      Object.fromEntries(Object.entries(scores).map(([d, c]) => [d, Math.round((c / total) * 1000) / 10]));
+    const classification = result?.results?.classification || (secondary ? "dual" : "single");
 
     return (
       <div className="space-y-6">
@@ -198,9 +87,10 @@ export function DoshaAssessmentPage() {
           </p>
         </div>
         <DoshaResultChart
+          doshas={quiz?.doshas || []}
           result={{ primary, secondary, scores, percentages, classification }}
         />
-        {fromChat && (
+        <div className="flex flex-wrap gap-3">
           <button
             onClick={() => {
               dispatch(clearResult());
@@ -210,13 +100,31 @@ export function DoshaAssessmentPage() {
           >
             Start chatting
           </button>
-        )}
+          <button
+            onClick={() => {
+              dispatch(clearResult());
+              setAnswers({});
+              setStep(0);
+              setRetake(true);
+            }}
+            className="rounded-xl border border-line px-5 py-2.5 text-sm font-medium text-text-muted transition-all duration-150 hover:bg-brand-50 hover:text-text"
+          >
+            Retake assessment
+          </button>
+        </div>
       </div>
     );
   }
 
-  const current = ALL_QUESTIONS[step];
-  const currentSection = STEPS.find((s) => s.questions.some((q) => q.key === current.key));
+  if (!ALL_QUESTIONS.length) {
+    return (
+      <div className="card p-6 text-sm text-text-muted">
+        {quizError ? `Could not load the quiz: ${quizError}` : "Loading the assessment..."}
+      </div>
+    );
+  }
+
+  const current = ALL_QUESTIONS[Math.min(step, ALL_QUESTIONS.length - 1)];
   const progress = ((step + 1) / ALL_QUESTIONS.length) * 100;
   const answered = Object.keys(answers).length;
 
@@ -229,8 +137,9 @@ export function DoshaAssessmentPage() {
 
   const handleSubmit = async () => {
     setSubmitting(true);
-    await dispatch(submitQuiz(answers));
+    const res = await dispatch(submitQuiz(answers));
     setSubmitting(false);
+    if (res.type?.endsWith("/fulfilled")) setRetake(false);
   };
 
   return (
@@ -247,7 +156,7 @@ export function DoshaAssessmentPage() {
           <span className="font-medium">
             Question {step + 1} of {ALL_QUESTIONS.length}
           </span>
-          <span>{currentSection?.section}</span>
+          <span>{current.section}</span>
         </div>
         <div className="h-2 overflow-hidden rounded-full bg-brand-100">
           <div
@@ -258,7 +167,7 @@ export function DoshaAssessmentPage() {
       </div>
 
       <fieldset className="card p-6">
-        <legend className="text-base font-semibold text-text">{current.q}</legend>
+        <legend className="text-base font-semibold text-text">{current.prompt}</legend>
         <div className="mt-5 space-y-3">
           {current.options.map((opt, idx) => (
             <button
@@ -275,6 +184,10 @@ export function DoshaAssessmentPage() {
           ))}
         </div>
       </fieldset>
+
+      {error && (
+        <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>
+      )}
 
       <div className="flex items-center justify-between">
         <button
@@ -295,7 +208,7 @@ export function DoshaAssessmentPage() {
         ) : (
           <button
             onClick={() => setStep((s) => Math.min(ALL_QUESTIONS.length - 1, s + 1))}
-            disabled={!answers[current.key]}
+            disabled={answers[current.key] === undefined}
             className="rounded-xl bg-brand px-5 py-2.5 text-sm font-medium text-white shadow-sm transition-all duration-150 hover:bg-brand-dark hover:shadow-md disabled:opacity-50"
           >
             Next

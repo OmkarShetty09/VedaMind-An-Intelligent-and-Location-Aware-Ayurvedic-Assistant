@@ -10,7 +10,7 @@ def build_store() -> VectorStore:
     if settings.vector_store == "milvus":
         from .stores.milvus_store import MilvusStore
 
-        return MilvusStore()
+        return MilvusStore(settings.milvus_uri)
     from .stores.pgvector_store import PgVectorStore
 
     return PgVectorStore(settings.database_url, embedding_dim=settings.embedding_dim)

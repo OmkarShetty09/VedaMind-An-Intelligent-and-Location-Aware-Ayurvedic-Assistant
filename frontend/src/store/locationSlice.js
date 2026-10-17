@@ -21,11 +21,20 @@ const locationSlice = createSlice({
     permission: "unknown",
     status: "idle",
     error: null,
+    saved: false, // coords stored on the server for the signed-in user (weather + routine use them)
   },
   reducers: {
     setCoords(state, action) {
+      const prev = state.coords;
+      if (!prev || prev.lat !== action.payload.lat || prev.lon !== action.payload.lon) state.saved = false;
       state.coords = action.payload;
       state.permission = "granted";
+    },
+    // A city the user picked by name: already saved on the server, so don't re-save it as GPS.
+    setManualLocation(state, action) {
+      state.coords = action.payload;
+      state.saved = true;
+      state.permission = "manual";
     },
     setPermission(state, action) {
       state.permission = action.payload;
@@ -45,11 +54,15 @@ const locationSlice = createSlice({
         state.status = "idle";
         state.error = action.error.message;
       })
+      .addCase(saveLocation.pending, (state) => {
+        state.saved = true; // set early so a re-render doesn't send a second save
+      })
       .addCase(saveLocation.rejected, (state, action) => {
+        state.saved = false;
         state.error = action.error.message;
       });
   },
 });
 
-export const { setCoords, setPermission } = locationSlice.actions;
+export const { setCoords, setManualLocation, setPermission } = locationSlice.actions;
 export default locationSlice.reducer;

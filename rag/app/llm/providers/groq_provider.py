@@ -1,10 +1,7 @@
 from .openai_provider import OpenAIProvider
 
-_URL = "https://api.groq.com/openai/v1/chat/completions"
-
 
 class GroqProvider(OpenAIProvider):
-    """Groq LLM provider via its OpenAI-compatible endpoint."""
+    """Groq LLM provider via its OpenAI-compatible endpoint (URL from settings.groq_chat_url)."""
 
     name = "groq"
-    base_url = _URL

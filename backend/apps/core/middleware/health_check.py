@@ -19,6 +19,14 @@ def healthz(_request):
     except Exception:
         checks["redis"] = False
 
+    # Informational only: the backend itself still serves auth/dosha/routine without the RAG service.
+    try:
+        import httpx
+
+        checks["rag"] = httpx.get(f"{settings.RAG_SERVICE_URL}/healthz", timeout=2.0).status_code == 200
+    except Exception:
+        checks["rag"] = False
+
     if checks["database"] and checks["redis"]:
         return JsonResponse({"status": "ok", "checks": checks}, status=200)
     return JsonResponse({"status": "degraded", "checks": checks}, status=503)

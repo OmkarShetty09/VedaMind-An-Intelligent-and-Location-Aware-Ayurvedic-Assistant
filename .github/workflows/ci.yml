@@ -34,7 +34,9 @@ jobs:
           python manage.py migrate
           pytest
         env:
-          DJANGO_SETTINGS_MODULE: config.settings.dev
+          DJANGO_SETTINGS_MODULE: config.settings.test
+          DJANGO_SECRET_KEY: ci-only-not-a-real-secret-0123456789abcdef
+          RAG_ADMIN_TOKEN: ci-only-rag-token
           POSTGRES_DB: vedamind_test
           POSTGRES_USER: vedamind
           POSTGRES_PASSWORD: vedamind
@@ -54,6 +56,8 @@ jobs:
       - run: pip install -r requirements/dev.txt
       - run: ruff check .
       - run: pytest
+        env:
+          RAG_ADMIN_TOKEN: ci-only-rag-token
 
   frontend:
     runs-on: ubuntu-latest

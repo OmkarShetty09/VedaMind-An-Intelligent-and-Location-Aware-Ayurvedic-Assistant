@@ -9,10 +9,26 @@ export const login = createAsyncThunk("auth/login", async (payload) => {
   return data.user;
 });
 
+export function browserTimezone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC";
+  } catch {
+    return "UTC";
+  }
+}
+
 export const register = createAsyncThunk("auth/register", async (payload) => {
-  const data = await authApi.register(payload);
+  const data = await authApi.register({ timezone: browserTimezone(), ...payload });
   setAccessToken(data.access);
   return data.user;
+});
+
+/** The Dinacharya engine schedules in the user's timezone; keep it matched to this device. */
+export const syncTimezone = createAsyncThunk("auth/syncTimezone", async (_, { getState }) => {
+  const tz = browserTimezone();
+  const user = getState().auth.user;
+  if (!user || user.timezone === tz) return user;
+  return authApi.updateMe({ timezone: tz });
 });
 
 export const fetchMe = createAsyncThunk("auth/me", async () => {
@@ -45,6 +61,9 @@ const authSlice = createSlice({
     clearError(state) {
       state.error = null;
     },
+    setUser(state, action) {
+      state.user = action.payload;
+    },
     noSession(state) {
       state.status = "anonymous";
     },
@@ -63,9 +82,18 @@ const authSlice = createSlice({
         state.status = "idle";
         state.error = action.error.message;
       })
+      .addCase(register.pending, (state) => {
+        state.error = null;
+      })
       .addCase(register.fulfilled, (state, action) => {
         state.status = "authenticated";
         state.user = action.payload;
+      })
+      .addCase(register.rejected, (state, action) => {
+        state.error = action.error.message;
+      })
+      .addCase(syncTimezone.fulfilled, (state, action) => {
+        if (action.payload) state.user = action.payload;
       })
       .addCase(fetchMe.fulfilled, (state, action) => {
         state.status = "authenticated";
@@ -79,6 +107,11 @@ const authSlice = createSlice({
         state.status = "idle";
         state.user = null;
       })
+      .addCase(logout.rejected, (state) => {
+        // The token is cleared in `finally` either way, so the session is over locally.
+        state.status = "idle";
+        state.user = null;
+      })
       .addCase(updateConsent.fulfilled, (state, action) => {
         state.consentStatus = "accepted";
         if (state.user) state.user.consent_accepted = action.payload.consent_accepted;
@@ -86,5 +119,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { clearError, noSession } = authSlice.actions;
+export const { clearError, noSession, setUser } = authSlice.actions;
 export default authSlice.reducer;

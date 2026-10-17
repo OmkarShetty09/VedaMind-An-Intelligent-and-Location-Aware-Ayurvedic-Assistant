@@ -3,7 +3,10 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-SEASONS = ("vasant", "grishma", "varsha", "sharad", "hemant", "shishir")
+from .ritu import seasons as _ritu_seasons
+
+# One calendar for the whole app: data/ritu.json.
+SEASONS = tuple(s["key"] for s in _ritu_seasons())
 
 
 class DinacharyaRecommendation(models.Model):
@@ -40,3 +43,41 @@ class RoutineActivity(models.Model):
 
     def __str__(self):
         return f"{self.start:%H:%M} {self.title}"
+
+
+class RoutineTemplate(models.Model):
+    """One Dinacharya activity rule, rendered per user by engine.build_routine(). Edited in the admin.
+
+    start / end: {"anchor": "sunrise"|"sunset"|"clock", "offset_minutes": int, "clock": "HH:MM",
+                  "fallback_clock": "HH:MM" (used for sun anchors when the location is unknown)}
+    Text may contain {dosha}. season_overrides / dosha_overrides map a season / dosha key to fields to
+    replace (e.g. a different oil in winter, an earlier bedtime for kapha).
+    """
+
+    key = models.SlugField(max_length=60, unique=True)
+    order = models.PositiveSmallIntegerField(default=0, help_text="Tie-breaker when two activities start together.")
+    active = models.BooleanField(default=True)
+    time_of_day = models.CharField(max_length=32)
+    start = models.JSONField()
+    end = models.JSONField(null=True, blank=True)
+    title = models.CharField(max_length=160)
+    description = models.TextField(blank=True)
+    reasons = models.JSONField(default=list, blank=True)
+    citations = models.JSONField(default=list, blank=True)
+    dosha_target = models.CharField(max_length=10, blank=True)
+    above_temperature_c = models.FloatField(
+        null=True, blank=True, help_text="Only include the activity when it is hotter than this."
+    )
+    season_overrides = models.JSONField(default=dict, blank=True)
+    dosha_overrides = models.JSONField(default=dict, blank=True)
+
+    class Meta:
+        ordering = ["order"]
+
+    def __str__(self):
+        return self.title
+
+    def as_dict(self) -> dict:
+        fields = ("key", "order", "time_of_day", "start", "end", "title", "description", "reasons", "citations",
+                  "dosha_target", "above_temperature_c", "season_overrides", "dosha_overrides")
+        return {f: getattr(self, f) for f in fields}

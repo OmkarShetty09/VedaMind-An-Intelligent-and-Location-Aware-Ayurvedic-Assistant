@@ -9,7 +9,7 @@ class OllamaProvider(OpenAIProvider):
     """
 
     name = "ollama"
-    base_url = "http://localhost:11434/v1/chat/completions"
+    requires_key = False
 
     def __init__(self, api_key: str = "", default_model: str = "llama3.2", base_url: str | None = None):
         super().__init__(api_key, default_model, base_url)

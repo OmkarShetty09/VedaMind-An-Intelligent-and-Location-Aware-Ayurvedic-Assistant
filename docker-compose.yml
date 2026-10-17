@@ -1,5 +1,17 @@
 ﻿name: vedamind
 
+# Values come from .env (copy .env.example). Hostnames in .env are for running without Docker,
+# so every service below overrides them with the compose service names.
+x-backend-env: &backend-env
+  DJANGO_SETTINGS_MODULE: config.settings.dev
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  DATABASE_URL: postgresql://${POSTGRES_USER:-vedamind}:${POSTGRES_PASSWORD:-vedamind}@postgres:5432/${POSTGRES_DB:-vedamind}
+  REDIS_URL: redis://redis:6379/0
+  CELERY_BROKER_URL: redis://redis:6379/1
+  CELERY_RESULT_BACKEND: redis://redis:6379/2
+  RAG_SERVICE_URL: http://rag:8001
+
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -34,10 +46,7 @@ services:
       dockerfile: docker/Dockerfile
     command: runserver
     env_file: .env
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      POSTGRES_HOST: postgres
-      RAG_SERVICE_URL: http://rag:8001
+    environment: *backend-env
     volumes:
       - ./backend:/app
       - ./data:/data
@@ -57,15 +66,13 @@ services:
       dockerfile: docker/Dockerfile
     command: worker
     env_file: .env
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      POSTGRES_HOST: postgres
+    environment: *backend-env
     volumes:
       - ./backend:/app
       - ./data:/data
     depends_on:
-      postgres:
-        condition: service_healthy
+      backend:
+        condition: service_started
       redis:
         condition: service_healthy
 
@@ -75,12 +82,12 @@ services:
       dockerfile: docker/Dockerfile
     command: beat
     env_file: .env
-    environment:
-      DJANGO_SETTINGS_MODULE: config.settings.dev
-      POSTGRES_HOST: postgres
+    environment: *backend-env
     volumes:
       - ./backend:/app
     depends_on:
+      backend:
+        condition: service_started
       redis:
         condition: service_healthy
 
@@ -94,6 +101,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-vedamind}:${POSTGRES_PASSWORD:-vedamind}@postgres:5432/${POSTGRES_DB:-vedamind}
       REDIS_URL: redis://redis:6379/0
       BACKEND_GUARDRAIL_URL: http://backend:8000/api/v1/guardrails/check
+      # Ollama (optional local fallback) runs on the host, not in a container.
+      OLLAMA_BASE_URL: http://host.docker.internal:11434/v1
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./rag:/app
       - ./data:/data

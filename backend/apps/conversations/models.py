@@ -39,3 +39,17 @@ class Message(TimestampedModel):
 
     def __str__(self):
         return f"{self.role}:{self.content[:32] if self.content else '(blocked)'}"
+
+
+class ChatSuggestion(models.Model):
+    """Starter questions shown on an empty chat. Edited in the admin."""
+
+    text = models.CharField(max_length=160)
+    order = models.PositiveSmallIntegerField(default=0)
+    active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ["order", "id"]
+
+    def __str__(self):
+        return self.text

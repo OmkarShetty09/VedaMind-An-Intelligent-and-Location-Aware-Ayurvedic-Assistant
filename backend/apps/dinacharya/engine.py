@@ -1,16 +1,18 @@
 """Dinacharya engine: deterministic rules produce a citable schedule.
 
-The LLM never invents activities or times. This engine emits the structured
-schedule; the RAG service may only *render* it as prose.
+The LLM never invents activities or times. The activities are RoutineTemplate rows (edited in the
+admin); this engine resolves their times against the user's sunrise/sunset, season, weather and
+dosha, and emits the structured schedule.
 """
 
 from dataclasses import dataclass
-from datetime import date, datetime, time
+from datetime import date, datetime, time, timedelta
 from zoneinfo import ZoneInfo
+
+from django.conf import settings
 
 from .kala import approx_sunrise, classify
 from .ritu import season_for
-from .rules import evening, mealtime, morning, sleep
 
 
 @dataclass
@@ -27,9 +29,13 @@ class RoutineContext:
     approximate_location: bool = False
 
 
-ENGINE_VERSION = "1.0.0"
+ENGINE_VERSION = "2.0.0"
 
-_RULE_MODULES = (morning, mealtime, evening, sleep)
+
+def load_templates() -> list[dict]:
+    from .models import RoutineTemplate
+
+    return [t.as_dict() for t in RoutineTemplate.objects.filter(active=True)]
 
 
 def build_routine(
@@ -40,8 +46,12 @@ def build_routine(
     lat: float | None = None,
     lon: float | None = None,
     northern: bool = True,
+    templates: list[dict] | None = None,
 ) -> dict:
-    """Compute today's routine for a user. Pure logic + deterministic rules."""
+    """Compute today's routine for a user. Pure logic + deterministic rules.
+
+    `templates` defaults to the active RoutineTemplate rows (tests pass them explicitly).
+    """
     tz = ZoneInfo(user.timezone)
     local_now = local_now or datetime.now(tz)
     day = local_now.date()
@@ -66,16 +76,18 @@ def build_routine(
         local_time=local_now.strftime("%H:%M"),
         temperature_c=temp,
         humidity=humidity,
-        dominant_dosha=dominant or "vata",
+        dominant_dosha=dominant or settings.DINACHARYA_DEFAULT_DOSHA,
         sunrise=sunrise,
         sunset=sunset,
         approximate_location=lat is None,
     )
 
-    activities = []
-    for module in _RULE_MODULES:
-        activities.extend(module.build_activities(ctx))
-    activities.sort(key=lambda a: a["order"])
+    templates = templates if templates is not None else load_templates()
+    activities = [a for a in (_render(t, ctx) for t in templates) if a is not None]
+    # Present the day as a timeline; the template `order` only breaks ties between equal start times.
+    activities.sort(key=lambda a: (a["start"], a["order"]))
+    for position, activity in enumerate(activities):
+        activity["order"] = position
 
     return {
         "date": day.isoformat(),
@@ -128,3 +140,47 @@ def _approx_sunset(day, lat, lon, offset_hours) -> "time":
     total = sr.hour + sr.minute / 60 + hours
     total = total % 24
     return time(int(total), int(round((total - int(total)) * 60)) % 60)
+
+
+def _render(template: dict, ctx: RoutineContext) -> dict | None:
+    """One template -> one activity for this user/day, or None when its condition does not apply."""
+    threshold = template.get("above_temperature_c")
+    if threshold is not None and (ctx.temperature_c is None or ctx.temperature_c <= threshold):
+        return None
+    merged = {
+        **template,
+        **(template.get("season_overrides") or {}).get(ctx.season, {}),
+        **(template.get("dosha_overrides") or {}).get(ctx.dominant_dosha, {}),
+    }
+
+    def fill(text: str) -> str:
+        return (text or "").replace("{dosha}", ctx.dominant_dosha)
+
+    return {
+        "time_of_day": merged["time_of_day"],
+        "start": _resolve_time(merged["start"], ctx),
+        "end": _resolve_time(merged["end"], ctx) if merged.get("end") else None,
+        "title": fill(merged["title"]),
+        "description": fill(merged.get("description", "")),
+        "reasons": [fill(r) for r in merged.get("reasons") or []],
+        "citations": merged.get("citations") or [],
+        "dosha_target": fill(merged.get("dosha_target", "")),
+        "order": merged.get("order", 0),
+    }
+
+
+def _parse_clock(value: str) -> time:
+    hours, minutes = value.split(":")
+    return time(int(hours), int(minutes))
+
+
+def _resolve_time(spec: dict, ctx: RoutineContext) -> time:
+    """{"anchor": "sunrise"|"sunset"|"clock", "offset_minutes", "clock", "fallback_clock"} -> local time."""
+    anchor = spec.get("anchor", "clock")
+    if anchor == "clock":
+        return _parse_clock(spec["clock"])
+    base = ctx.sunrise if anchor == "sunrise" else ctx.sunset
+    if base is None:
+        base = _parse_clock(spec["fallback_clock"])
+    moment = datetime.combine(ctx.date, base) + timedelta(minutes=int(spec.get("offset_minutes", 0)))
+    return moment.time()

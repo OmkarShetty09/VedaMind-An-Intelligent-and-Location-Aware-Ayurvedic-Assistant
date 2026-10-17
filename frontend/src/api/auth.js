@@ -7,7 +7,11 @@ export const authApi = {
   refresh: () => request(endpoints.auth.refresh, { method: "POST", body: {} }),
   logout: () => request(endpoints.auth.logout, { method: "POST" }),
   me: () => request(endpoints.auth.me),
+  updateMe: (payload) => request(endpoints.auth.me, { method: "PATCH", body: payload }),
+  updateMedications: (medications) =>
+    request(endpoints.auth.medications, { method: "PATCH", body: { medications } }),
+  updateConditions: (conditions) => request(endpoints.auth.conditions, { method: "PATCH", body: { conditions } }),
   updateConsent: () => request(endpoints.auth.meConsent, { method: "POST", body: { disclaimer_version: "1.0" } }),
-  updateLocation: (lat, lon) =>
-    request(endpoints.auth.location, { method: "POST", body: { lat, lon, source: "gps" } }),
+  updateLocation: (lat, lon, extra = {}) =>
+    request(endpoints.auth.location, { method: "POST", body: { lat, lon, source: "gps", ...extra } }),
 };

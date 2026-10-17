@@ -1,9 +1,11 @@
-fastapi==0.115.6
-uvicorn[standard]==0.32.1
-pydantic==2.10.3
-pydantic-settings==2.6.1
-httpx==0.28.1
-psycopg[binary]==3.2.3
-redis==5.2.1
-jinja2==3.1.4
-python-json-logger==3.2.0
+# Ranges (not exact pins) so the service installs from prebuilt wheels on Python 3.12, 3.13 and 3.14.
+# Lower bounds are the originally pinned versions; upper bounds are the newest versions tested.
+fastapi>=0.115.6,<0.144
+uvicorn[standard]>=0.32.1,<0.55
+pydantic>=2.10.3,<2.15
+pydantic-settings>=2.6.1,<2.17
+httpx>=0.28.1,<0.29
+psycopg[binary]>=3.2.3,<3.3
+redis>=5.2.1,<6
+jinja2>=3.1.4,<3.2
+python-json-logger>=3.2.0,<4

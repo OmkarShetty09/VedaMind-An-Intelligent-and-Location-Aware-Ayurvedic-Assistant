@@ -5,7 +5,8 @@ echo "Waiting for postgres..."
 python - <<'EOF'
 import os, sys, time
 import psycopg
-conninfo = (
+url = os.environ.get("DATABASE_URL")
+conninfo = url or (
     f"host={os.environ.get('POSTGRES_HOST','postgres')} "
     f"port={os.environ.get('POSTGRES_PORT','5432')} "
     f"dbname={os.environ.get('POSTGRES_DB','vedamind')} "
@@ -22,15 +23,26 @@ else:
     sys.exit("postgres not reachable")
 EOF
 
-python manage.py migrate --noinput
-python manage.py collectstatic --noinput
+# Only the web process migrates; worker/beat start after it (running migrate in parallel races).
+migrate_and_collect() {
+    python manage.py migrate --noinput
+    python manage.py collectstatic --noinput
+}
 
 if [ "$1" = "worker" ]; then
     exec celery -A config worker -l info
 elif [ "$1" = "beat" ]; then
-    exec celery -A config beat -l info
+    exec celery -A config beat -l info --schedule /tmp/celerybeat-schedule
 elif [ "$1" = "runserver" ]; then
+    # Dev server serves static files itself (DEBUG); collectstatic would only write into the bind mount.
+    python manage.py migrate --noinput
     exec python manage.py runserver 0.0.0.0:8000
-else
+elif [ -z "$1" ] || [ "$1" = "gunicorn" ]; then
+    migrate_and_collect
+    if [ "$1" = "gunicorn" ]; then
+        exec "$@"
+    fi
     exec gunicorn config.wsgi:application -c docker/gunicorn.conf.py
+else
+    exec "$@"
 fi

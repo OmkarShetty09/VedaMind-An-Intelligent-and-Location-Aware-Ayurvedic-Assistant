@@ -8,7 +8,7 @@ class MessageSerializer(serializers.ModelSerializer):
         model = Message
         fields = [
             "id", "role", "content", "source_citations",
-            "guardrail_decision", "llm_model", "tokens", "created_at",
+            "guardrail_decision", "llm_model", "tokens", "block_reason", "created_at",
         ]
 
 

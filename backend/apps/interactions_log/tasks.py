@@ -1,4 +1,5 @@
 from celery import shared_task
+from django.conf import settings
 from django.core.mail import send_mail
 from django.utils import timezone
 
@@ -16,14 +17,16 @@ def daily_digest():
         .values_list("decision")
         .annotate(count=Count("id"))
     )
-    try:
-        send_mail(
-            subject="VedaMind guardrail digest",
-            message=f"Decisions in last 24h: {counts}",
-            from_email=None,
-            recipient_list=["steward@vedamind.app"],
-            fail_silently=True,
-        )
-    except Exception:
-        pass
+    recipients = settings.GUARDRAIL_DIGEST_RECIPIENTS
+    if recipients:
+        try:
+            send_mail(
+                subject="VedaMind guardrail digest",
+                message=f"Decisions in last 24h: {counts}",
+                from_email=None,
+                recipient_list=recipients,
+                fail_silently=True,
+            )
+        except Exception:
+            pass
     return counts

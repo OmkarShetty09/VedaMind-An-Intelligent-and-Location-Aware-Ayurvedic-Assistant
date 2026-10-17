@@ -14,7 +14,13 @@ class RoutineActivitySerializer(serializers.ModelSerializer):
 
 class DinacharyaSerializer(serializers.ModelSerializer):
     activities = RoutineActivitySerializer(many=True, read_only=True)
+    season_info = serializers.SerializerMethodField()
 
     class Meta:
         model = DinacharyaRecommendation
-        fields = ["date", "season", "engine_version", "inputs_snapshot", "generated_at", "activities"]
+        fields = ["date", "season", "season_info", "engine_version", "inputs_snapshot", "generated_at", "activities"]
+
+    def get_season_info(self, obj):
+        from .ritu import season_info
+
+        return season_info(obj.season)

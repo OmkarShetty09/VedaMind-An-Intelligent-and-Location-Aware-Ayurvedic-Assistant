@@ -1,4 +1,4 @@
-import { getAccessToken } from "../api/client.js";
+import { errorMessage, getAccessToken, refreshAccessToken } from "../api/client.js";
 import { endpoints } from "../api/endpoints.js";
 
 const MAX_RETRIES = 3;
@@ -9,7 +9,7 @@ function parseRetryDelay(response, body) {
     const seconds = parseInt(retryAfter, 10);
     if (!isNaN(seconds)) return seconds;
   }
-  const match = body?.message?.match(/available in (\d+) seconds?/);
+  const match = (body?.error?.message || body?.message)?.match?.(/available in (\d+) seconds?/);
   if (match) return parseInt(match[1], 10);
   return 5;
 }
@@ -23,17 +23,28 @@ function sleep(ms) {
  * Django re-wraps RAG events as `event: X\ndata: {...}\n\n` frames.
  */
 export async function openSSE(url, { body, onEvent, onError, onRetry, signal }) {
+  let refreshed = false;
   for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    const token = getAccessToken();
     const response = await fetch(url, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(getAccessToken() ? { Authorization: `Bearer ${getAccessToken()}` } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       body: JSON.stringify(body),
       credentials: "include",
       signal,
     });
+
+    // Access tokens are short-lived; renew once from the refresh cookie and resend.
+    if (response.status === 401 && !refreshed) {
+      refreshed = true;
+      if (await refreshAccessToken()) {
+        attempt--;
+        continue;
+      }
+    }
 
     if (response.status === 429 && attempt < MAX_RETRIES) {
       let errorBody = {};
@@ -51,16 +62,11 @@ export async function openSSE(url, { body, onEvent, onError, onRetry, signal }) 
     if (!response.ok) {
       let message = `Stream failed (${response.status})`;
       try {
-        const data = await response.json();
-        const fields = data?.error?.fields;
-        const fieldErrors = fields
-          ? Object.entries(fields).map(([k, v]) => `${k}: ${Array.isArray(v) ? v.join(", ") : v}`).join("; ")
-          : "";
-        message = data?.error?.message || fieldErrors || data?.message || message;
+        message = errorMessage(await response.json(), response.status);
       } catch {
         /* keep default */
       }
-      onError({ code: "http_" + response.status, message });
+      onError({ code: "http_" + response.status, message, status: response.status });
       return;
     }
 
@@ -71,7 +77,7 @@ export async function openSSE(url, { body, onEvent, onError, onRetry, signal }) 
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
-      buffer += decoder.decode(value, { stream: true });
+      buffer += decoder.decode(value, { stream: true }).replace(/\r\n/g, "\n");
       const frames = buffer.split("\n\n");
       buffer = frames.pop();
       for (const frame of frames) {
@@ -79,6 +85,8 @@ export async function openSSE(url, { body, onEvent, onError, onRetry, signal }) 
         if (event) onEvent(event);
       }
     }
+    const last = parseFrame(buffer + decoder.decode());
+    if (last) onEvent(last);
     return;
   }
 }

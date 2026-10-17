@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { useSelector } from "react-redux";
 
@@ -6,13 +6,15 @@ import { Button } from "../components/common/Button.jsx";
 import { useAuthContext } from "../contexts/AuthContext.jsx";
 import { store } from "../store/index.js";
 import { loadProfile } from "../store/doshaSlice.js";
+import { endpoints } from "../api/endpoints.js";
 
 function DoshaProfileCard() {
   const { profile } = useSelector((s) => s.dosha);
+  const { isAuthenticated } = useAuthContext();
 
   useEffect(() => {
-    store.dispatch(loadProfile());
-  }, []);
+    if (isAuthenticated) store.dispatch(loadProfile());
+  }, [isAuthenticated]);
 
   if (!profile || !profile.dominant_dosha) {
     return (
@@ -88,15 +90,20 @@ function DinacharyaCard() {
 }
 
 function SeasonalCard() {
-  const now = new Date();
-  const month = now.getMonth();
-  let season, emoji;
-  if (month >= 2 && month <= 4) { season = "Vasant (Spring)"; emoji = "🌸"; }
-  else if (month >= 5 && month <= 6) { season = "Grishma (Summer)"; emoji = "☀️"; }
-  else if (month >= 7 && month <= 8) { season = "Varsha (Monsoon)"; emoji = "🌧️"; }
-  else if (month >= 9 && month <= 10) { season = "Sharad (Autumn)"; emoji = "🍂"; }
-  else if (month === 11 || month === 0) { season = "Hemant (Early Winter)"; emoji = "🍁"; }
-  else { season = "Shishir (Late Winter)"; emoji = "❄️"; }
+  // The ritu calendar lives in the backend (dinacharya/data/ritu.json), shared with the routine and chat.
+  const coords = useSelector((st) => st.location.coords);
+  const [info, setInfo] = useState(null);
+
+  useEffect(() => {
+    const query = coords ? `?lat=${coords.lat}` : "";
+    fetch(`${endpoints.season}${query}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then(setInfo)
+      .catch(() => setInfo(null));
+  }, [coords]);
+
+  const season = info?.label || "...";
+  const emoji = info?.emoji || "";
 
   return (
     <div className="card p-5">

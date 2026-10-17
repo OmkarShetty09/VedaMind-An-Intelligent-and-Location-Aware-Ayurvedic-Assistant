@@ -9,6 +9,38 @@ export const deleteSession = createAsyncThunk("chat/deleteSession", async (id) =
   return id;
 });
 
+const META_KEYS = ["citations", "blocked", "low_confidence", "context_chip", "guardrail", "clarifying_question"];
+
+/**
+ * The assistant message for the turn in flight. Guardrail / citation / chip events arrive before
+ * (or instead of) any tokens, so the message is created on the first event of the turn.
+ */
+function currentAssistant(state) {
+  const last = state.messages[state.messages.length - 1];
+  if (last && last.role === "assistant" && last.streaming) return last;
+  const fresh = { role: "assistant", content: "", streaming: true };
+  state.messages.push(fresh);
+  return state.messages[state.messages.length - 1];
+}
+
+function applyMeta(message, meta = {}) {
+  for (const key of META_KEYS) {
+    if (meta[key] !== undefined && meta[key] !== null && meta[key] !== false) message[key] = meta[key];
+  }
+}
+
+/** Server history rows -> the shape MessageBubble renders. */
+function fromServer(m) {
+  return {
+    id: m.id,
+    role: m.role,
+    content: m.content || "",
+    citations: m.source_citations || [],
+    blocked: Boolean(m.block_reason) && !m.content,
+    block_reason: m.block_reason || "",
+  };
+}
+
 const chatSlice = createSlice({
   name: "chat",
   initialState: {
@@ -33,27 +65,26 @@ const chatSlice = createSlice({
       state.streaming = true;
     },
     appendAssistantChunk(state, action) {
-      const last = state.messages[state.messages.length - 1];
-      if (last && last.role === "assistant" && last.streaming) {
-        last.content = (last.content || "") + action.payload;
-      } else {
-        state.messages.push({ role: "assistant", content: action.payload, streaming: true });
-      }
+      const message = currentAssistant(state);
+      message.content = (message.content || "") + action.payload;
+    },
+    updateAssistantMessage(state, action) {
+      applyMeta(currentAssistant(state), action.payload);
     },
     finishAssistantMessage(state, action) {
-      const last = state.messages[state.messages.length - 1];
-      if (last && last.role === "assistant") {
-        last.streaming = false;
-        if (action.payload?.citations) last.citations = action.payload.citations;
-        if (action.payload?.blocked) last.blocked = true;
-        if (action.payload?.low_confidence) last.low_confidence = true;
-        if (action.payload?.context_chip) last.context_chip = action.payload.context_chip;
-        if (action.payload?.guardrail) last.guardrail = action.payload.guardrail;
-        if (action.payload?.clarifying_question) last.clarifying_question = action.payload.clarifying_question;
-      }
+      const message = currentAssistant(state);
+      applyMeta(message, action.payload);
+      message.question = action.payload?.question;
+      message.streaming = false;
       state.streaming = false;
     },
     setStreamError(state, action) {
+      const last = state.messages[state.messages.length - 1];
+      if (last && last.role === "assistant" && last.streaming) {
+        last.streaming = false;
+        // Nothing was produced for this turn: drop the empty bubble, the error banner explains it.
+        if (!last.content && !last.guardrail && !last.clarifying_question) state.messages.pop();
+      }
       state.error = action.payload;
       state.streaming = false;
       state.retryState = null;
@@ -67,16 +98,21 @@ const chatSlice = createSlice({
     clearMessages(state) {
       state.messages = [];
       state.activeSessionId = null;
+      state.error = null;
     },
   },
   extraReducers: (builder) => {
     builder
       .addCase(listSessions.fulfilled, (state, action) => {
-        state.sessions = action.payload.results || action.payload;
+        state.sessions = action.payload?.results || action.payload || [];
       })
       .addCase(loadSession.fulfilled, (state, action) => {
         state.activeSessionId = action.payload.id;
-        state.messages = action.payload.messages || [];
+        state.messages = (action.payload.messages || []).map(fromServer);
+        state.error = null;
+      })
+      .addCase(loadSession.rejected, (state, action) => {
+        state.error = action.error.message;
       })
       .addCase(deleteSession.fulfilled, (state, action) => {
         state.sessions = state.sessions.filter((s) => s.id !== action.payload);
@@ -93,6 +129,7 @@ export const {
   startStream,
   appendUserMessage,
   appendAssistantChunk,
+  updateAssistantMessage,
   finishAssistantMessage,
   setStreamError,
   setRetryState,

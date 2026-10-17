@@ -40,7 +40,7 @@ OUTPUT FORMAT:
 
 PASSAGES:
 {% for p in passages %}
-[S{{ loop.index }}] {{ p.text }}
+[S{{ loop.index }}] {{ p.content }}
   source: {{ p.metadata.get('source', 'unknown') }}{% if p.metadata.get('chapter') %} / {{ p.metadata.chapter }}{% endif %}{% if p.metadata.get('verse') %} / {{ p.metadata.verse }}{% endif %}
 {% endfor %}
 

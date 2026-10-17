@@ -2,7 +2,6 @@
 
 QUIZ_VERSION = "2.0"
 
-TOTAL_QUESTIONS = 11
 
 
 def score(answers: dict) -> dict:

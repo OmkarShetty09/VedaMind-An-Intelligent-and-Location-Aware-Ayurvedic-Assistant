@@ -16,6 +16,7 @@ export function useSSE() {
     const controller = new AbortController();
     controllerRef.current = controller;
     setStreaming(true);
+    let finished = false;
     try {
       await openSSE(url, {
         body,
@@ -42,25 +43,31 @@ export function useSSE() {
               handlers.onClarifyingQuestion?.(data);
               break;
             case "done":
+              finished = true;
               handlers.onDone?.(data);
-              setStreaming(false);
               break;
             case "error":
+              finished = true;
               handlers.onError?.(data);
-              setStreaming(false);
               break;
             default:
               break;
           }
         },
         onError: (err) => {
+          finished = true;
           handlers.onError?.(err);
-          setStreaming(false);
         },
       });
+      if (!finished && !controller.signal.aborted) {
+        handlers.onError?.({ message: "The answer stream ended unexpectedly. Please try again." });
+      }
     } catch (err) {
-      if (err.name !== "AbortError") handlers.onError?.({ message: err.message });
-      setStreaming(false);
+      if (err.name !== "AbortError") {
+        handlers.onError?.({ message: "Could not reach the server. Is the backend running?" });
+      }
+    } finally {
+      if (controllerRef.current === controller) setStreaming(false);
     }
   }, []);
 

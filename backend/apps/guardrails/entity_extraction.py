@@ -1,7 +1,27 @@
+import json
+import re
 from dataclasses import dataclass, field
+from functools import lru_cache
+from pathlib import Path
 
 from .alias_graph import ResolvedEntity, get_default_graph
 from .constants import ALIAS_MATCH_THRESHOLD
+from .drug_lexicon import DrugLexicon, get_default_lexicon
+
+_TEXT_RULES_PATH = Path(__file__).resolve().parent / "data" / "text_rules.json"
+
+
+@lru_cache(maxsize=1)
+def text_rules() -> dict:
+    """Tokenisation rules (filler words, drug-name stems, dose words) from data/text_rules.json."""
+    rules = json.loads(_TEXT_RULES_PATH.read_text(encoding="utf-8"))
+    return {
+        "filler": frozenset(rules["filler_words"]),
+        "dose_words": frozenset(rules["dose_words"]),
+        "stems": tuple(rules["drug_stems"]),
+        "stem_min_length": int(rules["drug_stem_min_length"]),
+        "not_drugs": frozenset(rules["not_drugs"]),
+    }
 
 
 @dataclass
@@ -15,78 +35,98 @@ class EntityExtraction:
         return not self.ambiguous
 
 
-def extract_entities(text: str, graph=None) -> EntityExtraction:
-    """Map free text to canonical herb/drug ids deterministically.
+def extract_entities(
+    text: str, graph=None, medications: list[str] | None = None, lexicon: DrugLexicon | None = None
+) -> EntityExtraction:
+    """Map free text (+ the user's declared medications) to canonical herb/drug ids deterministically.
 
-    Strategy: tokenize on alphanumeric runs; resolve each token via the alias
-    graph. Tokens that fail resolution are classified as drugs only if they are
-    neither known herbs nor filler words. Ambiguity (low confidence) is
-    surfaced, never guessed.
+    Strategy: tokenize on alphanumeric runs; multi-word herb aliases ("winter cherry") are matched
+    first, then each token is resolved as a known drug (DrugAlias table), a herb (HerbAlias graph),
+    or a drug by its INN stem. Ordinary words are ignored - only recognisable drugs count as drugs,
+    otherwise every question mentioning a herb ("turmeric for joint pain") would look like a novel
+    pair. Every entry in `medications` is a drug by declaration, recognised or not. Ambiguity (low
+    confidence) is surfaced, never guessed.
     """
     graph = graph or get_default_graph()
+    lexicon = lexicon if lexicon is not None else get_default_lexicon()
+    rules = text_rules()
     result = EntityExtraction()
+    seen_herbs: set[str] = set()
+    seen_drugs: set[str] = set()
+
+    def add_herb(entity: ResolvedEntity):
+        if entity.canonical not in seen_herbs:
+            seen_herbs.add(entity.canonical)
+            result.herbs.append(entity)
+
+    def add_drug(name: str, matched: str, confidence: float, exact: bool):
+        if name not in seen_drugs:
+            seen_drugs.add(name)
+            result.drugs.append(ResolvedEntity(name, matched, confidence, exact))
+
     tokens = _tokenize(text)
-    seen = set()
-    for tok in tokens:
+    consumed: set[int] = set()
+    for size in (3, 2):
+        for start in range(len(tokens) - size + 1):
+            if any(i in consumed for i in range(start, start + size)):
+                continue
+            phrase = " ".join(tokens[start : start + size])
+            entity = graph.resolve_exact(phrase)
+            if entity is not None:
+                add_herb(entity)
+                consumed.update(range(start, start + size))
+
+    seen_tokens: set[str] = set()
+    for i, tok in enumerate(tokens):
         key = tok.lower()
-        if key in seen or key in _FILLER:
+        if i in consumed or key in seen_tokens or key in rules["filler"]:
             continue
-        seen.add(key)
+        seen_tokens.add(key)
+        drug = lexicon.resolve(key)
+        if drug:
+            add_drug(drug, tok, 1.0, True)
+            continue
         entity, conf = graph.resolve_ambiguous(tok)
         if entity is None:
-            # not a known herb: treat as potential drug/substance if plausibly one
-            if _looks_like_drug(tok):
-                result.drugs.append(ResolvedEntity(tok, tok, 0.5, False))
+            if looks_like_drug(key):
+                add_drug(key, tok, 0.5, False)
             continue
         if conf < ALIAS_MATCH_THRESHOLD:
             result.ambiguous.append(tok)
             continue
         # a canonical herb name could also be the substance name of a drug
-        if _is_drug_like(tok, graph):
-            result.drugs.append(entity)
+        if _is_drug_like(tok):
+            add_drug(entity.canonical, tok, entity.confidence, entity.is_exact)
         else:
-            result.herbs.append(entity)
+            add_herb(entity)
+
+    skip = rules["filler"] | rules["dose_words"]
+    for med in medications or []:
+        med_tokens = [t.lower() for t in _tokenize(str(med)) if t.lower() not in skip]
+        if not med_tokens:
+            continue
+        known = [d for d in (lexicon.resolve(t) or (t if looks_like_drug(t) else None) for t in med_tokens) if d]
+        if known:
+            for name in known:
+                add_drug(name, str(med), 1.0, True)
+        else:
+            # Declared by the user but not in our vocabulary: still a drug (fails safe as a novel pair).
+            add_drug(" ".join(med_tokens), str(med), 0.5, False)
     return result
 
 
-def _tokenize(text: str) -> list[str]:
-    import re
+def looks_like_drug(key: str) -> bool:
+    rules = text_rules()
+    return len(key) >= rules["stem_min_length"] and key not in rules["not_drugs"] and key.endswith(rules["stems"])
 
+
+def _tokenize(text: str) -> list[str]:
     return re.findall(r"[A-Za-z][A-Za-z\-]{2,}", text)
 
 
-def _looks_like_drug(tok: str) -> bool:
-    return len(tok) >= 4
-
-
-def _is_drug_like(tok: str, graph) -> bool:
+def _is_drug_like(tok: str) -> bool:
     """Heuristic: a resolved herb token is drug-like if the raw token ends in -in,
     -ide, -ol, -ate, -zolam etc. (drug-suffix patterns). Deterministic only.
     """
     lowered = tok.lower()
     return lowered.endswith(("zolam", "pam", "-ide", "-ol", "-ate", "sartan", "statin", "mycin", "cillin"))
-
-
-_FILLER = {
-    "and", "the", "with", "for", "from", "take", "taking", "taken", "give", "dose", "dosage",
-    "mg", "g", "gram", "grams", "tablet", "tablets", "capsule", "capsules", "tea", "spoon",
-    "every", "daily", "once", "twice", "before", "after", "meal", "food", "herb", "herbs", "drug",
-    "medicine", "medication", "please", "what", "can", "should", "i", "my", "me", "am", "is", "are",
-    "have", "has", "had", "fever", "tell", "about", "know", "information", "help",
-    "how", "when", "where", "why", "which", "that", "this", "these", "those", "some", "any",
-    "all", "most", "much", "many", "very", "really", "just", "also", "too", "only", "even",
-    "now", "then", "here", "there", "well", "still", "already", "yet", "ever", "never",
-    "does", "do", "did", "was", "were", "been", "being", "will", "would", "could",
-    "may", "might", "shall", "must", "need", "want", "like", "prefer", "suggest", "recommend",
-    "good", "bad", "best", "worst", "better", "worse", "right", "wrong", "sure", "think",
-    "feel", "feeling", "getting", "going", "coming", "doing", "making", "using", "trying",
-    "today", "yesterday", "tomorrow", "morning", "evening", "night", "day", "week", "month",
-    "year", "time", "long", "short", "old", "new", "first", "last", "next", "previous",
-    "high", "low", "medium", "large", "small", "big", "little", "great", "tiny",
-    "say", "said", "told", "ask", "asked", "answer", "reply", "respond",
-    "see", "look", "watch", "hear", "listen", "read", "write", "type", "speak", "talk",
-    "come", "go", "move", "run", "walk", "stop", "start", "begin", "end", "finish",
-    "eat", "drink", "sleep", "wake", "rest", "work", "play", "study", "learn", "teach",
-    "get", "put", "keep", "let", "make", "find", "show", "turn", "use",
-    "try", "love", "hate", "care", "miss", "remember",
-}

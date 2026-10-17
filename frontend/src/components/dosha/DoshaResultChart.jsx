@@ -1,30 +1,13 @@
 import { DoshaScaleBar } from "./DoshaScaleBar.jsx";
 
-const DOSHA_DESCRIPTIONS = {
-  vata: {
-    tagline: "Movement & creativity",
-    description:
-      "You are driven by air and space energy. Vata types tend to be creative, quick-thinking, and adaptable, but may experience anxiety, dry skin, or irregular digestion when imbalanced.",
-  },
-  pitta: {
-    tagline: "Transformation & focus",
-    description:
-      "You are driven by fire and water energy. Pitta types tend to be ambitious, warm, and decisive, but may experience irritability, inflammation, or acid reflux when imbalanced.",
-  },
-  kapha: {
-    tagline: "Stability & nurturing",
-    description:
-      "You are driven by earth and water energy. Kapha types tend to be calm, loyal, and grounded, but may experience lethargy, weight gain, or congestion when imbalanced.",
-  },
-};
-
 const CLASSIFICATION_LABELS = {
   single: "Single Dosha",
   dual: "Dual Dosha",
   tridoshic: "Tridoshic",
 };
 
-export function DoshaResultChart({ result }) {
+/** doshas: [{dosha, label, element, tagline, description}] from GET /dosha/quiz (edited in the admin). */
+export function DoshaResultChart({ result, doshas = [] }) {
   if (!result?.scores) return null;
 
   const primary = (result.primary || result.dominant_dosha || "").toLowerCase();
@@ -32,7 +15,8 @@ export function DoshaResultChart({ result }) {
   const classification = result.classification || "single";
   const scores = result.scores;
   const percentages = result.percentages || {};
-  const primaryInfo = DOSHA_DESCRIPTIONS[primary] || DOSHA_DESCRIPTIONS.vata;
+  const info = Object.fromEntries(doshas.map((d) => [d.dosha, d]));
+  const primaryInfo = info[primary] || { tagline: "", description: "" };
   const totalQuestions = Object.values(scores).reduce((a, b) => a + b, 0) || 11;
 
   return (
@@ -84,6 +68,7 @@ export function DoshaResultChart({ result }) {
               total={totalQuestions}
               isPrimary={dosha === primary}
               isSecondary={dosha === secondary}
+              info={info[dosha]}
             />
           ))}
       </div>

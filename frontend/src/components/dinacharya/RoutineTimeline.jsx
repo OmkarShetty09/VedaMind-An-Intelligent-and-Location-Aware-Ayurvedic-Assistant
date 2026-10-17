@@ -1,9 +1,26 @@
 import { RitucharyaSeasonBadge } from "./RitucharyaSeasonBadge.jsx";
 
-export function RoutineTimeline({ activities }) {
+/** "06:15:00" -> "06:15" */
+function hhmm(t) {
+  return typeof t === "string" ? t.slice(0, 5) : "";
+}
+
+function timeWindow(act) {
+  const start = hhmm(act.start);
+  const end = hhmm(act.end);
+  if (start && end) return `${start} – ${end}`;
+  return start || "—";
+}
+
+function citationLabel(c) {
+  if (typeof c === "string") return c;
+  return [c.source, c.ref].filter(Boolean).join(", ");
+}
+
+export function RoutineTimeline({ activities, seasonInfo }) {
   return (
     <div className="space-y-4">
-      <RitucharyaSeasonBadge />
+      <RitucharyaSeasonBadge info={seasonInfo} />
       <div className="relative space-y-0">
         {activities.map((act, i) => {
           const isLast = i === activities.length - 1;
@@ -19,19 +36,24 @@ export function RoutineTimeline({ activities }) {
                 <div className="rounded-xl border border-line bg-surface p-4 shadow-soft transition-all duration-150 hover:shadow-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-text">{act.activity}</p>
+                      <p className="text-sm font-semibold text-text">{act.title}</p>
                       {act.description && (
                         <p className="mt-1 text-sm leading-relaxed text-text-muted">{act.description}</p>
                       )}
+                      {act.reasons?.length > 0 && (
+                        <p className="mt-1.5 text-xs italic text-text-faint">{act.reasons.join(" ")}</p>
+                      )}
                     </div>
                     <span className="shrink-0 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand">
-                      {act.time_window || act.time || "—"}
+                      {timeWindow(act)}
                     </span>
                   </div>
-                  {act.sources?.length > 0 && (
-                    <div className="mt-2.5 flex flex-wrap gap-1">
-                      {act.sources.map((s, j) => (
-                        <span key={j} className="text-[10px] text-text-faint">{s}</span>
+                  {act.citations?.length > 0 && (
+                    <div className="mt-2.5 flex flex-wrap gap-2">
+                      {act.citations.map((c, j) => (
+                        <span key={j} className="rounded bg-brand-50/60 px-1.5 py-0.5 text-[10px] text-text-faint">
+                          {citationLabel(c)}
+                        </span>
                       ))}
                     </div>
                   )}

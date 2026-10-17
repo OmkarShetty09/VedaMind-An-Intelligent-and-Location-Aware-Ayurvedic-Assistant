@@ -11,3 +11,5 @@ data/processed/
 data/embeddings/
 .dockerignore
 Dockerfile
+.venv
+venv

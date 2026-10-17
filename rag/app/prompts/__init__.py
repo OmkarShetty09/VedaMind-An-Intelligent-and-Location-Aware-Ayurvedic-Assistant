@@ -22,7 +22,9 @@ def render_system_grounded(
     medications: list[str] | None = None,
     conditions: list[str] | None = None,
     location_context: str | None = None,
+    history: list[dict] | None = None,
 ) -> list[dict]:
+    """history: earlier turns of this conversation (oldest first, current message excluded)."""
     template = load_template("system_grounded.j2")
     dosha_data = None
     if dosha:
@@ -42,8 +44,17 @@ def render_system_grounded(
         conditions=conditions or [],
         location_context=location_context,
     )
+    earlier = []
+    for turn in (history or [])[-6:]:
+        content = (turn.get("content") or "").strip()
+        if not content or turn.get("role") not in ("user", "assistant"):
+            continue
+        if turn["role"] == "user":
+            content = f"<user>\n{content[:1000]}\n</user>"
+        earlier.append({"role": turn["role"], "content": content[:1500]})
     return [
         {"role": "system", "content": system},
+        *earlier,
         {"role": "user", "content": f"<user>\n{user_message}\n</user>"},
     ]
 

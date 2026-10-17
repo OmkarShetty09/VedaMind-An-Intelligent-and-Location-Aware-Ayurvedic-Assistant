@@ -11,7 +11,7 @@ from pathlib import Path
 from app.config import get_settings
 
 from .chunker import chunk_document
-from .embeddings import EmbeddingUnavailable, embed_texts
+from .embeddings import EmbeddingUnavailable, embed_texts, embedding_model_name
 from .manifest import write_manifest
 from .verifier import verify_source, verify_metadata, get_corpus_status
 
@@ -98,7 +98,7 @@ def run_ingestion(raw_dir: Path, chunks_dir: Path, manifest_path: Path, *, corpu
     try:
         embeddings = embed_texts([c["content"] for c in chunks])
     except EmbeddingUnavailable:
-        logger.error("Embedding unavailable; nothing written. Re-run with OPENAI_API_KEY.")
+        logger.error("Embedding unavailable; nothing written. Set GEMINI_API_KEY (or OPENAI_API_KEY) in .env and re-run.")
         raise
 
     if len(embeddings) != len(chunks):
@@ -125,9 +125,9 @@ def run_ingestion(raw_dir: Path, chunks_dir: Path, manifest_path: Path, *, corpu
 
     write_manifest(
         manifest_path,
-        version=settings.embedding_model,
+        version=embedding_model_name(),
         chunks=chunks,
-        embedding_model=settings.embedding_model,
+        embedding_model=embedding_model_name(),
         count=upserted,
         per_source=per_source,
     )

@@ -16,20 +16,6 @@ SEVERITY_CAUTION = (Severity.LOW,)
 
 POLYPHARMACY_ESCALATE_COUNT = 2  # >=2 moderate+ matches -> BLOCK (compounding risk)
 
-# --- drug class expansion: concrete drug -> classes the engine also matches ---
-DRUG_CLASSES = {
-    "hydrochlorothiazide": ["thiazide_diuretics", "diuretics"],
-    "furosemide": ["diuretics"],
-    "lisinopril": ["ace_inhibitors"],
-    "enalapril": ["ace_inhibitors"],
-    "ramipril": ["ace_inhibitors"],
-    "diazepam": ["benzodiazepines", "sedatives"],
-    "alprazolam": ["benzodiazepines", "sedatives"],
-    "lorazepam": ["benzodiazepines", "sedatives"],
-    "donepezil": ["cholinesterase_inhibitors"],
-    "digoxin": ["cardiac_glycosides"],
-}
-
 # --- engine reliability ---
 FAIL_CLOSED_REASON = ReasonCode.ENGINE_ERROR
 FAIL_CLOSED_DECISION = "needs_review"

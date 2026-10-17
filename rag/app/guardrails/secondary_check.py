@@ -8,7 +8,7 @@ passes on pairs the deterministic set doesn't cover.
 import json
 import logging
 
-from app.config import get_settings
+from app.config import get_settings, usable_key
 from app.llm import router
 from app.prompts import load_template
 
@@ -19,7 +19,7 @@ logger = logging.getLogger("rag.guardrails.secondary")
 
 def secondary_review(result: GuardrailResult, pair_text: str, context: dict) -> GuardrailResult:
     settings = get_settings()
-    if not settings.openai_api_key and not settings.gemini_api_key:
+    if not any(usable_key(k) for k in (settings.gemini_api_key, settings.groq_api_key, settings.openai_api_key)):
         # No LLM configured: keep the engine verdict, but never let "no rule"
         # become a silent pass - engine already returns needs_review for those.
         return result

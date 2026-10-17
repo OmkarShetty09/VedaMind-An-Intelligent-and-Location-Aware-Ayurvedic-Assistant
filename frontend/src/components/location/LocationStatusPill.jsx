@@ -1,5 +1,6 @@
 const state = {
   granted: { label: "Location on", cls: "bg-green-100 text-green-800 border-green-200" },
+  manual: { label: "City set", cls: "bg-green-100 text-green-800 border-green-200" },
   denied: { label: "Location off", cls: "bg-amber-100 text-amber-800 border-amber-200" },
   prompt: { label: "Requesting...", cls: "bg-blue-100 text-blue-800 border-blue-200" },
   unsupported: { label: "Not supported", cls: "bg-gray-100 text-gray-600 border-gray-200" },

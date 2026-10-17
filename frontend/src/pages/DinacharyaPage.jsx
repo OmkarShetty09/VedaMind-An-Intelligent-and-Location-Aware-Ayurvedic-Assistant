@@ -1,4 +1,7 @@
+import { useState } from "react";
+
 import { DinacharyaCard } from "../components/dinacharya/DinacharyaCard.jsx";
+import { CityPicker } from "../components/location/CityPicker.jsx";
 import { LocationStatusPill } from "../components/location/LocationStatusPill.jsx";
 import { useDinacharya } from "../hooks/useDinacharya.js";
 import { useGeolocation } from "../hooks/useGeolocation.js";
@@ -8,6 +11,7 @@ export function DinacharyaPage() {
   const { routine, status, error, regenerate } = useDinacharya();
   const { permission, coords, request } = useGeolocation({ autoRequest: false });
   const { weather, status: weatherStatus, refetchWeather } = useWeather();
+  const [changingCity, setChangingCity] = useState(false);
 
   return (
     <div className="space-y-6">
@@ -16,9 +20,50 @@ export function DinacharyaPage() {
           <h1 className="page-title">Dinacharya</h1>
           <p className="page-subtitle">Your daily routine, tuned to your time, season, and weather.</p>
         </div>
-        <LocationStatusPill permission={permission} />
+        <LocationStatusPill permission={!coords && weather ? "manual" : permission} />
       </div>
-      {!coords && permission === "unknown" && (
+      {/* The browser blocked/can't do geolocation and no location is saved yet: let the user type a city. */}
+      {!coords && !weather && (permission === "denied" || permission === "unsupported") && (
+        <div className="card space-y-3 px-5 py-4">
+          <div className="flex items-start gap-3">
+            <div className="flex-1">
+              <p className="text-sm font-medium text-text">Location is blocked in this browser</p>
+              <p className="text-xs text-text-muted">
+                Pick your city instead, so sunrise, sunset and weather are right. (Or allow location in the browser&apos;s
+                site settings and press Retry.)
+              </p>
+            </div>
+            <button
+              onClick={request}
+              className="shrink-0 rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-text-muted transition-colors hover:bg-brand-50"
+            >
+              Retry
+            </button>
+          </div>
+          <CityPicker onSaved={regenerate} />
+        </div>
+      )}
+      {(coords || weather) && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setChangingCity((v) => !v)}
+            className="text-xs font-medium text-text-muted underline-offset-2 hover:text-brand hover:underline"
+          >
+            {changingCity ? "Cancel" : "Change city"}
+          </button>
+        </div>
+      )}
+      {changingCity && (
+        <div className="card px-5 py-4">
+          <CityPicker
+            onSaved={() => {
+              setChangingCity(false);
+              regenerate();
+            }}
+          />
+        </div>
+      )}
+      {!coords && !weather && permission === "unknown" && (
         <div className="card flex items-center gap-3 px-5 py-4">
           <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">

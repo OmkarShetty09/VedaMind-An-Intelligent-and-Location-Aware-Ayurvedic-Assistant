@@ -1,22 +1,24 @@
-import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 
 import { Button } from "../components/common/Button.jsx";
 import { Input } from "../components/common/Input.jsx";
 import { useAuthContext } from "../contexts/AuthContext.jsx";
 
 export function RegisterPage() {
-  const { signUp, error } = useAuthContext();
-  const navigate = useNavigate();
+  const { signUp, error, dismissError } = useAuthContext();
   const [form, setForm] = useState({ email: "", password: "", name: "" });
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    dismissError(); // don't show a stale error from the sign-in page
+  }, [dismissError]);
 
   const submit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    const res = await signUp(form);
+    await signUp(form); // on success the GuestOnly route redirects
     setLoading(false);
-    if (res.type?.endsWith("/fulfilled")) navigate("/");
   };
 
   return (
@@ -49,8 +51,8 @@ export function RegisterPage() {
               label="Password"
               type="password"
               required
-              minLength={8}
-              placeholder="At least 8 characters"
+              minLength={10}
+              placeholder="At least 10 characters"
               value={form.password}
               onChange={(e) => setForm({ ...form, password: e.target.value })}
             />

@@ -1,0 +1,11 @@
+{
+  "_comment": "Classical six-season (Ritu) calendar, northern hemisphere; the south is shifted by six months. Each ritu starts on the given month/day.",
+  "seasons": [
+    {"key": "shishir", "start": [1, 21], "label": "Shishir (Late Winter)", "english": "late winter", "emoji": "❄️"},
+    {"key": "vasant", "start": [3, 21], "label": "Vasant (Spring)", "english": "spring", "emoji": "🌸"},
+    {"key": "grishma", "start": [5, 21], "label": "Grishma (Summer)", "english": "summer", "emoji": "☀️"},
+    {"key": "varsha", "start": [7, 21], "label": "Varsha (Monsoon)", "english": "monsoon", "emoji": "🌧️"},
+    {"key": "sharad", "start": [9, 21], "label": "Sharad (Autumn)", "english": "autumn", "emoji": "🍂"},
+    {"key": "hemant", "start": [11, 21], "label": "Hemant (Early Winter)", "english": "early winter", "emoji": "🍁"}
+  ]
+}

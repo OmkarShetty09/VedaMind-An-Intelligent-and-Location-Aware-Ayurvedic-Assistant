@@ -1,7 +1,5 @@
 import httpx
-
-_TIMEOUT = 5.0
-_BASE = "https://api.open-meteo.com/v1/forecast"
+from django.conf import settings
 
 _WMO_DESCRIPTIONS = {
     0: "clear sky",
@@ -36,7 +34,7 @@ def fetch_one_call(lat: float, lon: float) -> dict:
     """Fetch current weather from Open-Meteo. Raises WeatherClientError on any fault."""
     try:
         resp = httpx.get(
-            _BASE,
+            settings.OPEN_METEO_FORECAST_URL,
             params={
                 "latitude": lat,
                 "longitude": lon,
@@ -48,7 +46,7 @@ def fetch_one_call(lat: float, lon: float) -> dict:
                 ),
                 "timezone": "auto",
             },
-            timeout=_TIMEOUT,
+            timeout=settings.EXTERNAL_HTTP_TIMEOUT_SECONDS,
         )
     except httpx.HTTPError as exc:
         raise WeatherClientError(f"transport error: {exc}") from exc
@@ -98,10 +96,10 @@ def reverse_geocode(lat: float, lon: float) -> str:
     """Return 'City, State' from coordinates via Nominatim. Empty string on failure."""
     try:
         resp = httpx.get(
-            "https://nominatim.openstreetmap.org/reverse",
+            settings.NOMINATIM_REVERSE_URL,
             params={"lat": lat, "lon": lon, "format": "json", "zoom": 10},
-            headers={"User-Agent": "VedaMind/1.0", "Referer": "https://vedamind.local"},
-            timeout=5.0,
+            headers={"User-Agent": settings.GEOCODER_USER_AGENT},
+            timeout=settings.EXTERNAL_HTTP_TIMEOUT_SECONDS,
         )
         addr = resp.json().get("address", {})
         city = addr.get("city") or addr.get("town") or addr.get("village") or ""
@@ -111,3 +109,33 @@ def reverse_geocode(lat: float, lon: float) -> str:
         return city or state
     except Exception:
         return ""
+
+
+def search_places(query: str, limit: int = 5) -> list[dict]:
+    """Forward geocoding (city name -> coordinates) via Open-Meteo. Raises WeatherClientError on faults.
+
+    Used when the browser's location permission is blocked: the user types their city instead.
+    """
+    try:
+        resp = httpx.get(
+            settings.OPEN_METEO_GEOCODING_URL,
+            params={"name": query, "count": limit, "language": "en", "format": "json"},
+            timeout=settings.EXTERNAL_HTTP_TIMEOUT_SECONDS,
+        )
+    except httpx.HTTPError as exc:
+        raise WeatherClientError(f"transport error: {exc}") from exc
+    if resp.status_code != 200:
+        raise WeatherClientError(f"http {resp.status_code}")
+    places = []
+    for item in resp.json().get("results") or []:
+        region = ", ".join(part for part in (item.get("admin1"), item.get("country")) if part)
+        places.append(
+            {
+                "name": item.get("name", ""),
+                "region": region,
+                "label": ", ".join(part for part in (item.get("name"), item.get("admin1")) if part),
+                "lat": item["latitude"],
+                "lon": item["longitude"],
+            }
+        )
+    return places

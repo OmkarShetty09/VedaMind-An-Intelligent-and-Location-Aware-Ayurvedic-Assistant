@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import HerbAlias, InteractionRule, RuleVersion
+from .models import DrugAlias, HerbAlias, InteractionRule, RuleVersion
 
 
 @admin.register(InteractionRule)
@@ -27,3 +27,9 @@ class HerbAliasAdmin(admin.ModelAdmin):
 @admin.register(RuleVersion)
 class RuleVersionAdmin(admin.ModelAdmin):
     list_display = ["version", "sha256", "activated_at", "steward"]
+
+
+@admin.register(DrugAlias)
+class DrugAliasAdmin(admin.ModelAdmin):
+    list_display = ["alias", "canonical", "classes"]
+    search_fields = ["alias", "canonical"]

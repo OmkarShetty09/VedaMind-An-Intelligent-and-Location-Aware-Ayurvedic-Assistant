@@ -6,9 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.middleware.request_context import request_correlation_id
+from apps.core.throttling import ChatRateThrottle
 from apps.users.permissions import HasAcceptedDisclaimer
 
-from .models import Conversation, Message
+from .models import ChatSuggestion, Conversation, Message
 from .serializers import ChatRequestSerializer, ConversationSerializer, MessageSerializer
 from .services import build_context_bundle
 from .streaming import stream_chat
@@ -20,7 +21,7 @@ class ChatView(APIView):
     """POST /api/v1/chat - persists the user turn, streams the RAG answer via SSE."""
 
     permission_classes = [permissions.IsAuthenticated, HasAcceptedDisclaimer]
-    throttle_scope = "chat"
+    throttle_classes = [ChatRateThrottle]
 
     def post(self, request):
         serializer = ChatRequestSerializer(data=request.data)
@@ -28,14 +29,16 @@ class ChatView(APIView):
         data = serializer.validated_data
 
         if data.get("session_id"):
-            conversation = Conversation.objects.filter(id=data["session_id"], user=request.user).first()
+            conversation = Conversation.objects.filter(
+                id=data["session_id"], user=request.user, deleted_at__isnull=True
+            ).first()
             if conversation is None:
                 return Response(
                     {"error": {"code": "not_found", "message": "Conversation not found."}},
                     status=status.HTTP_404_NOT_FOUND,
                 )
         else:
-            conversation = Conversation.objects.create(user=request.user)
+            conversation = Conversation.objects.create(user=request.user, title=" ".join(data["message"].split())[:80])
 
         user_message = Message.objects.create(
             conversation=conversation, role="user", content=data["message"]
@@ -79,7 +82,7 @@ class SessionDetailView(generics.RetrieveDestroyAPIView):
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Conversation.objects.filter(user=self.request.user)
+        return Conversation.objects.filter(user=self.request.user, deleted_at__isnull=True)
 
     def retrieve(self, request, *args, **kwargs):
         conversation = self.get_object()
@@ -97,3 +100,12 @@ class SessionDetailView(generics.RetrieveDestroyAPIView):
         conversation.deleted_at = timezone.now()
         conversation.save(update_fields=["deleted_at"])
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class SuggestionsView(APIView):
+    """GET /api/v1/chat/suggestions - starter questions for an empty chat (edited in the admin)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response({"results": list(ChatSuggestion.objects.filter(active=True).values_list("text", flat=True))})

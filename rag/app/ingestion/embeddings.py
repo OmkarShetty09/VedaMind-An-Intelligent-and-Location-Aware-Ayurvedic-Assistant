@@ -5,12 +5,10 @@ import time
 
 import httpx
 
-from app.config import get_settings
+from app.config import get_settings, usable_key
 
 logger = logging.getLogger("rag.ingestion.embeddings")
 
-_OPENAI_URL = "https://api.openai.com/v1/embeddings"
-_GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 class EmbeddingUnavailable(Exception):
@@ -41,7 +39,7 @@ def _embed_openai(texts: list[str], model: str, dim: int) -> list[list[float]]:
         for attempt in range(3):
             try:
                 resp = httpx.post(
-                    _OPENAI_URL,
+                    settings.openai_embeddings_url,
                     json={"model": model, "input": chunk, "dimensions": dim},
                     headers=headers,
                     timeout=120.0,
@@ -59,9 +57,17 @@ def _embed_openai(texts: list[str], model: str, dim: int) -> list[list[float]]:
     return out
 
 
-def _embed_gemini(texts: list[str], model: str, dim: int) -> list[list[float]]:
+def _gemini_request(model: str, text: str, dim: int, task: str) -> dict:
+    req = {"model": f"models/{model}", "content": {"parts": [{"text": text}]}, "outputDimensionality": dim}
+    if model == "gemini-embedding-001":
+        # Asymmetric retrieval embeddings; gemini-embedding-2 rejects taskType and needs none.
+        req["taskType"] = "RETRIEVAL_QUERY" if task == "query" else "RETRIEVAL_DOCUMENT"
+    return req
+
+
+def _embed_gemini(texts: list[str], model: str, dim: int, task: str = "document") -> list[list[float]]:
     settings = get_settings()
-    if not settings.gemini_api_key:
+    if not usable_key(settings.gemini_api_key):
         raise EmbeddingUnavailable("GEMINI_API_KEY not configured")
 
     out: list[list[float]] = []
@@ -72,13 +78,8 @@ def _embed_gemini(texts: list[str], model: str, dim: int) -> list[list[float]]:
         for attempt in range(5):
             try:
                 resp = httpx.post(
-                    f"{_GEMINI_URL}/{model}:batchEmbedContents",
-                    json={
-                        "requests": [
-                            {"model": f"models/{model}", "content": {"parts": [{"text": t}]}, "outputDimensionality": dim}
-                            for t in chunk
-                        ]
-                    },
+                    f"{settings.gemini_api_base}/{model}:batchEmbedContents",
+                    json={"requests": [_gemini_request(model, t, dim, task) for t in chunk]},
                     headers={"x-goog-api-key": settings.gemini_api_key},
                     timeout=120.0,
                 )
@@ -87,6 +88,9 @@ def _embed_gemini(texts: list[str], model: str, dim: int) -> list[list[float]]:
                     logger.warning("Gemini rate limited, waiting %ss (attempt %s/5)", wait, attempt + 1)
                     time.sleep(wait)
                     continue
+                if 400 <= resp.status_code < 500:
+                    # Bad key / unknown model / bad request: retrying cannot help, and every chat turn waits on this.
+                    raise EmbeddingUnavailable(f"gemini embeddings http {resp.status_code}: {resp.text[:300]}")
                 resp.raise_for_status()
                 batch_embeddings = [item["values"] for item in resp.json()["embeddings"]]
                 _validate_dimensions(batch_embeddings, dim, start)
@@ -105,22 +109,25 @@ def _embed_gemini(texts: list[str], model: str, dim: int) -> list[list[float]]:
     return out
 
 
-def _is_valid_key(key: str) -> bool:
-    return bool(key) and not key.endswith("...") and len(key) > 10
-
-
-def embed_texts(texts: list[str]) -> list[list[float]]:
+def embed_texts(texts: list[str], task: str = "document") -> list[list[float]]:
     settings = get_settings()
     if not any(t.strip() for t in texts):
         raise EmbeddingUnavailable("All texts are empty")
 
-    if _is_valid_key(settings.gemini_api_key):
-        gemini_model = "gemini-embedding-001"
-        return _embed_gemini(texts, gemini_model, settings.embedding_dim)
-    if _is_valid_key(settings.openai_api_key):
+    if usable_key(settings.gemini_api_key):
+        return _embed_gemini(texts, settings.gemini_embedding_model, settings.embedding_dim, task)
+    if usable_key(settings.openai_api_key):
         return _embed_openai(texts, settings.embedding_model, settings.embedding_dim)
     raise EmbeddingUnavailable("No valid embedding API key configured (set GEMINI_API_KEY or OPENAI_API_KEY)")
 
 
+def embedding_model_name() -> str:
+    """The model embed_texts() will actually use - recorded in the index manifest."""
+    settings = get_settings()
+    if usable_key(settings.gemini_api_key):
+        return settings.gemini_embedding_model
+    return settings.embedding_model
+
+
 def embed_query(text: str) -> list[float]:
-    return embed_texts([text])[0]
+    return embed_texts([text], task="query")[0]

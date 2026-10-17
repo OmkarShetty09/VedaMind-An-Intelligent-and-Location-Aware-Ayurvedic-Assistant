@@ -1,7 +1,7 @@
 import { useCallback, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
-import { clearError, fetchMe, login, logout, register, updateConsent } from "../store/authSlice.js";
+import { clearError, fetchMe, login, logout, register, syncTimezone, updateConsent } from "../store/authSlice.js";
 import { getAccessToken } from "../api/client.js";
 
 export function useAuth() {
@@ -18,6 +18,11 @@ export function useAuth() {
     }
   }, [dispatch, status]);
 
+  const userId = user?.id;
+  useEffect(() => {
+    if (status === "authenticated" && userId) dispatch(syncTimezone());
+  }, [dispatch, status, userId]);
+
   const signIn = useCallback((payload) => dispatch(login(payload)), [dispatch]);
   const signUp = useCallback((payload) => dispatch(register(payload)), [dispatch]);
   const signOut = useCallback(() => dispatch(logout()), [dispatch]);
@@ -27,7 +32,8 @@ export function useAuth() {
   return {
     user,
     isAuthenticated: status === "authenticated",
-    loading: status === "loading",
+    // "idle" = session not resolved yet (e.g. right after a page refresh, before /users/me answers).
+    loading: status === "loading" || status === "idle",
     consentAccepted: Boolean(user?.consent_accepted),
     consentStatus,
     error,

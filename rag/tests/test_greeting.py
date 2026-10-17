@@ -72,7 +72,7 @@ class TestGreetingResponse:
     def test_new_user_no_profile(self, monkeypatch):
         monkeypatch.setattr(
             "app.core.orchestrator.router.generate",
-            lambda messages, tier: iter(["Hi! I'm VedaMind."]),
+            lambda messages, tier, **kw: iter(["Hi! I'm VedaMind."]),
         )
         events = collect(list(_greeting_response("hello", {"has_dosha_profile": False})))
         tokens = "".join(e["delta"] for e in events if e["type"] == "token")
@@ -84,7 +84,7 @@ class TestGreetingResponse:
     def test_existing_profile_references_dosha(self, monkeypatch):
         monkeypatch.setattr(
             "app.core.orchestrator.router.generate",
-            lambda messages, tier: iter(["Good to see you again, Vata person."]),
+            lambda messages, tier, **kw: iter(["Good to see you again, Vata person."]),
         )
         context = {
             "has_dosha_profile": True,
@@ -122,7 +122,7 @@ class TestGreetingResponse:
     def test_no_citations_for_greeting(self, monkeypatch):
         monkeypatch.setattr(
             "app.core.orchestrator.router.generate",
-            lambda messages, tier: iter(["Hello!"]),
+            lambda messages, tier, **kw: iter(["Hello!"]),
         )
         events = collect(list(_greeting_response("hello", {"has_dosha_profile": False})))
         citation = next(e for e in events if e["type"] == "citation")
@@ -142,7 +142,7 @@ class TestOrchestratorGreetingIntegration:
         monkeypatch.setattr(orchestrator, "get_store", lambda: None)
         monkeypatch.setattr(orchestrator, "hybrid_search", fake_hybrid)
         monkeypatch.setattr(
-            orchestrator.router, "generate", lambda messages, tier: iter(["Hey there!"])
+            orchestrator.router, "generate", lambda messages, tier, **kw: iter(["Hey there!"])
         )
 
         events = collect(list(orchestrator.run("hi", {"has_dosha_profile": False})))

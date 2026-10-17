@@ -10,20 +10,22 @@ from .errors import RetrievalError
 def assemble(passages: list, citations: Citations) -> list[dict]:
     """Pack retrieved passages into template-ready items + populate citations.
 
-    Drops lowest-ranked passages first (never mid-shloka: chunks are atomic).
+    Drops lowest-ranked passages first (never mid-shloka: chunks are atomic). Citations are
+    numbered over the kept passages only, so [S1]..[Sn] in the prompt and in the UI agree.
     """
     settings = get_settings()
-    items = []
-    for p in passages:
-        ref = SourceRef(
-            source=p.metadata.get("source", "unknown"),
-            chapter=p.metadata.get("chapter", ""),
-            verse=p.metadata.get("verse", ""),
-            evidence_level=p.metadata.get("evidence_level", "classical"),
-        )
-        citations.add(ref)
-        items.append({"chunk_id": p.chunk_id, "content": p.text, "metadata": p.metadata})
+    items = [{"chunk_id": p.chunk_id, "content": p.text, "metadata": p.metadata} for p in passages]
     kept = enforce_context_budget(items, settings.context_max_tokens)
     if not kept:
         raise RetrievalError("No context fits the budget.")
+    for item in kept:
+        meta = item["metadata"]
+        citations.add(
+            SourceRef(
+                source=meta.get("source", "unknown"),
+                chapter=meta.get("chapter", ""),
+                verse=meta.get("verse", ""),
+                evidence_level=meta.get("evidence_level", "classical"),
+            )
+        )
     return kept

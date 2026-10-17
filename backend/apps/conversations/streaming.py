@@ -51,10 +51,12 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                 citations = []
                 model = ""
                 tokens = 0
+                blocked = False
                 block_reason = ""
                 guardrail_data = None
                 low_confidence = False
                 context_chip = None
+                clarifying_question = None
                 for line in resp.iter_lines():
                     if not line:
                         continue
@@ -69,7 +71,6 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                         content_parts.append(event["delta"])
                         yield sse("token", {"delta": event["delta"]})
                     elif etype == "guardrail":
-                        block_reason = event.get("decision", "")
                         guardrail_data = event
                         yield sse("guardrail", event)
                     elif etype == "citation":
@@ -82,11 +83,16 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                         low_confidence = True
                         yield sse("low_confidence", event)
                     elif etype == "clarifying_question":
+                        clarifying_question = event.get("question", "")
                         yield sse("clarifying_question", event)
                     elif etype == "done":
                         model = event.get("model", "")
                         tokens = event.get("tokens", 0)
-                        block_reason = event.get("reason_code", block_reason)
+                        # reason_code is also set on normal turns (greeting, empty_kb); only `blocked` means refused.
+                        blocked = bool(event.get("blocked"))
+                        if blocked:
+                            block_reason = event.get("reason_code", "") or (guardrail_data or {}).get("reason_code", "")
+                        low_confidence = low_confidence or bool(event.get("low_confidence"))
                         break
                     elif etype == "error":
                         yield sse(
@@ -98,20 +104,21 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                 assistant = Message.objects.create(
                     conversation=conversation,
                     role="assistant",
-                    content="".join(content_parts) or None,
+                    content="".join(content_parts) or clarifying_question or None,
                     source_citations=citations,
                     llm_model=model,
                     tokens=tokens,
-                    block_reason=block_reason,
+                    block_reason=block_reason[:48],
                 )
+                conversation.save(update_fields=["updated_at"])
                 done_payload = {
                     "message_id": str(assistant.id),
                     "session_id": str(session_id),
                     "tokens": tokens,
                     "model": model,
+                    "blocked": blocked,
                 }
                 if block_reason:
-                    done_payload["blocked"] = True
                     done_payload["reason_code"] = block_reason
                 if low_confidence:
                     done_payload["low_confidence"] = True
@@ -119,6 +126,8 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                     done_payload["guardrail"] = guardrail_data
                 if context_chip:
                     done_payload["context_chip"] = context_chip
+                if clarifying_question:
+                    done_payload["clarifying_question"] = clarifying_question
                 yield sse("done", done_payload)
         except httpx.HTTPError as exc:
             logger.warning("RAG stream failed for %s: %s", correlation_id, exc)

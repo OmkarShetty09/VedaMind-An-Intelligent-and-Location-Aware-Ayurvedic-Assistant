@@ -1,0 +1,74 @@
+{
+  "doshas": [
+    {
+      "dosha": "vata",
+      "label": "Vata",
+      "element": "Air & Space",
+      "tagline": "Movement & creativity",
+      "description": "You are driven by air and space energy. Vata types tend to be creative, quick-thinking, and adaptable, but may experience anxiety, dry skin, or irregular digestion when imbalanced.",
+      "order": 0
+    },
+    {
+      "dosha": "pitta",
+      "label": "Pitta",
+      "element": "Fire & Water",
+      "tagline": "Transformation & focus",
+      "description": "You are driven by fire and water energy. Pitta types tend to be ambitious, warm, and decisive, but may experience irritability, inflammation, or acid reflux when imbalanced.",
+      "order": 1
+    },
+    {
+      "dosha": "kapha",
+      "label": "Kapha",
+      "element": "Earth & Water",
+      "tagline": "Stability & nurturing",
+      "description": "You are driven by earth and water energy. Kapha types tend to be calm, loyal, and grounded, but may experience lethargy, weight gain, or congestion when imbalanced.",
+      "order": 2
+    }
+  ],
+  "questions": [
+    {"key": "body_frame", "section": "Physical Characteristics", "prompt": "Body Frame & Build", "options": [
+      {"text": "Slender, light, thin frame; hard to gain weight.", "dosha": "vata"},
+      {"text": "Medium, athletic build; moderate muscle tone; can gain/lose weight easily.", "dosha": "pitta"},
+      {"text": "Solid, large, broad frame; sturdy build; gains weight easily, loses it slowly.", "dosha": "kapha"}]},
+    {"key": "skin_type", "section": "Physical Characteristics", "prompt": "Skin Type", "options": [
+      {"text": "Dry, rough, thin, cool to the touch, prone to cracking.", "dosha": "vata"},
+      {"text": "Warm, reddish, oily in the T-zone, prone to inflammation, acne, or freckles.", "dosha": "pitta"},
+      {"text": "Thick, smooth, moist, soft, cool, oily skin.", "dosha": "kapha"}]},
+    {"key": "hair_texture", "section": "Physical Characteristics", "prompt": "Hair Texture", "options": [
+      {"text": "Dry, thin, coarse, curly, or prone to split ends.", "dosha": "vata"},
+      {"text": "Fine, straight, soft, early graying or thinning/balding.", "dosha": "pitta"},
+      {"text": "Thick, dark, wavy, lustrous, and strong.", "dosha": "kapha"}]},
+    {"key": "joints_mobility", "section": "Physical Characteristics", "prompt": "Joints & Mobility", "options": [
+      {"text": "Small joints; prominent bones; joints tend to crack or pop.", "dosha": "vata"},
+      {"text": "Flexible, medium-sized joints; warm and comfortable.", "dosha": "pitta"},
+      {"text": "Large, sturdy, well-padded joints with high flexibility.", "dosha": "kapha"}]},
+    {"key": "appetite_digestion", "section": "Physiology & Metabolism", "prompt": "Appetite & Digestion", "options": [
+      {"text": "Irregular, variable appetite; prone to gas, bloating, or constipation.", "dosha": "vata"},
+      {"text": "Strong, intense appetite; gets irritable if meals are delayed; prone to acid reflux.", "dosha": "pitta"},
+      {"text": "Steady, slow appetite; can skip meals easily without discomfort; slow digestion.", "dosha": "kapha"}]},
+    {"key": "climate_preference", "section": "Physiology & Metabolism", "prompt": "Weather & Climate Preference", "options": [
+      {"text": "Dislikes cold and wind; loves warm, humid climates.", "dosha": "vata"},
+      {"text": "Dislikes heat and bright sun; prefers cool, well-ventilated places.", "dosha": "pitta"},
+      {"text": "Dislikes cold and damp/rainy weather; prefers warm, dry environments.", "dosha": "kapha"}]},
+    {"key": "sleep_quality", "section": "Physiology & Metabolism", "prompt": "Sleep Quality", "options": [
+      {"text": "Light sleeper, restless, easily awakened, prone to insomnia.", "dosha": "vata"},
+      {"text": "Sound, moderate sleeper (6–8 hours); can wake up easily if needed.", "dosha": "pitta"},
+      {"text": "Deep, heavy sleeper (8+ hours); finds it hard to wake up in the morning.", "dosha": "kapha"}]},
+    {"key": "energy_stamina", "section": "Physiology & Metabolism", "prompt": "Energy & Stamina", "options": [
+      {"text": "Bursts of high energy followed by sudden fatigue; low endurance.", "dosha": "vata"},
+      {"text": "High, focused energy; strong stamina; driven to accomplish goals.", "dosha": "pitta"},
+      {"text": "Steady, reliable energy; high endurance, but takes time to get started.", "dosha": "kapha"}]},
+    {"key": "learning_memory", "section": "Mind, Emotions & Behavior", "prompt": "Learning & Memory Style", "options": [
+      {"text": "Learns very quickly, but forgets quickly too.", "dosha": "vata"},
+      {"text": "Medium-paced learner; distinct understanding; remembers what is useful.", "dosha": "pitta"},
+      {"text": "Learns slowly, but retains information for a long time (strong long-term memory).", "dosha": "kapha"}]},
+    {"key": "stress_reaction", "section": "Mind, Emotions & Behavior", "prompt": "Reaction to Stress", "options": [
+      {"text": "Anxiety, worry, fear, overthinking, agitation.", "dosha": "vata"},
+      {"text": "Anger, impatience, frustration, irritability, criticism.", "dosha": "pitta"},
+      {"text": "Stubbornness, withdrawal, complacency, emotional eating.", "dosha": "kapha"}]},
+    {"key": "spending_habits", "section": "Mind, Emotions & Behavior", "prompt": "Spending & Money Habits", "options": [
+      {"text": "Impulsive spender; spends money quickly on short-term wants.", "dosha": "vata"},
+      {"text": "Spends money intentionally on quality, luxury, or practical items.", "dosha": "pitta"},
+      {"text": "Saver by nature; accumulates wealth and hates spending unnecessarily.", "dosha": "kapha"}]}
+  ]
+}

@@ -2,9 +2,15 @@ from rest_framework import generics, permissions
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .models import DoshaAssessment, DoshaProfile
+from .models import DoshaAssessment, DoshaInfo, DoshaProfile, QuizQuestion
 from .scoring import score
-from .serializers import DoshaAssessmentSerializer, DoshaProfileSerializer, DoshaSubmitSerializer
+from .serializers import (
+    DoshaAssessmentSerializer,
+    DoshaInfoSerializer,
+    DoshaProfileSerializer,
+    DoshaSubmitSerializer,
+    QuizQuestionSerializer,
+)
 
 
 class AssessView(APIView):
@@ -39,3 +45,17 @@ class ProfileView(generics.RetrieveUpdateAPIView):
     def get_object(self):
         profile, _ = DoshaProfile.objects.get_or_create(user=self.request.user)
         return profile
+
+
+class QuizView(APIView):
+    """GET /api/v1/dosha/quiz - the active questions and the dosha descriptions (both edited in the admin)."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        return Response(
+            {
+                "questions": QuizQuestionSerializer(QuizQuestion.objects.filter(active=True), many=True).data,
+                "doshas": DoshaInfoSerializer(DoshaInfo.objects.all(), many=True).data,
+            }
+        )

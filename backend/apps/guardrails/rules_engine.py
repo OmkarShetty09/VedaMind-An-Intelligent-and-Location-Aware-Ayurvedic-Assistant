@@ -10,7 +10,6 @@ from collections.abc import Iterable
 from dataclasses import dataclass, field
 
 from .constants import (
-    DRUG_CLASSES,
     POLYPHARMACY_ESCALATE_COUNT,
     SEVERITY_BLOCK,
     SEVERITY_CAUTION,
@@ -54,12 +53,18 @@ def _evidence_enum(name: str) -> Evidence:
     return Evidence[name.upper()]
 
 
+_UNIT_TO_MG = {"mcg": 0.001, "mg": 1.0, "g": 1000.0, "gm": 1000.0, "gram": 1000.0, "grams": 1000.0}
+
+
 def _dose_mg(dose: str | None) -> float | None:
-    """Parse a dose string like '5 mg' or '1 tsp' -> mg number if numeric."""
+    """Parse a dose string like '5 mg', '>4g' or '500' -> milligrams (unitless numbers are mg)."""
     if not dose:
         return None
-    m = re.search(r"(\d+(?:\.\d+)?)", dose)
-    return float(m.group(1)) if m else None
+    m = re.search(r"(\d+(?:\.\d+)?)\s*([a-zA-Z]*)", dose)
+    if not m:
+        return None
+    factor = _UNIT_TO_MG.get(m.group(2).lower(), 1.0)
+    return float(m.group(1)) * factor
 
 
 def _below_dose_threshold(rule: InteractionRule, herb: str, doses: dict) -> bool:
@@ -107,18 +112,21 @@ def evaluate(
     doses: dict | None = None,
     rules: Iterable[InteractionRule] | None = None,
     ambiguous: list[str] | None = None,
+    drug_classes: dict[str, set[str]] | None = None,
 ) -> DecisionSet:
     """Core evaluation. Raises nothing - always returns a DecisionSet.
 
     Passed a generator of rules so callers control persistence (tests inject
-    factories; production uses the DB).
+    factories; production uses the DB). `drug_classes` maps a drug to the classes it
+    belongs to (from the DrugAlias table), so rules written for a class match its members.
     """
     herbs = [h.lower() for h in herbs]
     drugs = [d.lower() for d in drugs]
     context = context or {}
     doses = doses or {}
     ambiguous = ambiguous or []
-    expanded_drugs = set(drugs) | {c for d in drugs for c in DRUG_CLASSES.get(d, ())}
+    drug_classes = drug_classes or {}
+    expanded_drugs = set(drugs) | {c for d in drugs for c in drug_classes.get(d, ())}
     all_subs = set(herbs) | expanded_drugs
 
     rules = rules if rules is not None else InteractionRule.objects.filter(active=True)
@@ -158,11 +166,10 @@ def evaluate(
         )
 
     if result.matches:
-        order = {m.decision: Decision[m.decision.upper()].value for m in result.matches}
-        worst = max(order.items(), key=lambda kv: kv[1])
+        worst = max(result.matches, key=lambda m: Decision[m.decision.upper()].value)
         return DecisionSet(
-            overall=worst[0],
-            reason_code=ReasonCode.NO_RULE,
+            overall=worst.decision,
+            reason_code=worst.reason_code,
             matches=result.matches,
             entities=result.entities,
             engine_version=result.engine_version,

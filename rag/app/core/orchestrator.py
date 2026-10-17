@@ -16,7 +16,7 @@ from app.guardrails.jailbreak_detector import JailbreakDetector
 from app.ingestion.embeddings import EmbeddingUnavailable, embed_query
 from app.llm import cache as llm_cache
 from app.llm import router, streaming, token_budget
-from app.prompts import refusal_text, render_system_grounded
+from app.prompts import load_template, refusal_text, render_system_grounded
 from app.retrieval.deps_store import get_store
 from app.retrieval.filters import apply_filters
 from app.retrieval.hybrid import hybrid_search
@@ -55,63 +55,30 @@ def _greeting_response(user_message: str, context: dict) -> Iterator[str]:
     dominant = dosha.get("dominant_dosha", "")
     secondary = dosha.get("secondary_dosha", "")
 
+    dosha_ref = ""
     if has_profile and dominant:
-        dosha_ref = dominant.capitalize()
-        if secondary:
-            dosha_ref += f" with secondary {secondary.capitalize()}"
-        prompt = (
-            "You are VedaMind, a personalized Ayurvedic wellness assistant. "
-            "The user has greeted you. They already have a completed Prakriti assessment: "
-            f"their constitution is {dosha_ref}. "
-            "Greet them warmly, briefly reference their existing dosha profile, "
-            "and ask how you can help them today. "
-            "Keep it to 1-2 sentences. Do not give unsolicited health advice."
-        )
-    else:
-        prompt = (
-            "You are VedaMind, a personalized Ayurvedic wellness assistant. "
-            "The user has greeted you. They do not yet have a Prakriti (dosha) profile. "
-            "Greet them warmly, briefly introduce yourself, explain that a short "
-            "Prakriti assessment is needed before you can give personalized guidance, "
-            "and ask whether they would like to begin. "
-            "Keep it to 2-3 sentences. Do not give unsolicited health advice."
-        )
+        dosha_ref = dominant.capitalize() + (f" with secondary {secondary.capitalize()}" if secondary else "")
 
     messages = [
         {"role": "system", "content": SYSTEM_GUARD},
-        {"role": "user", "content": prompt},
+        {"role": "user", "content": load_template("greeting_prompt.j2").render(dosha_ref=dosha_ref).strip()},
     ]
-
+    used: dict = {}
     try:
-        answer = "".join(router.generate(messages, tier="cheap"))
+        answer = "".join(router.generate(messages, tier="cheap", used=used))
     except Exception:  # noqa: BLE001
-        if has_profile and dominant:
-            answer = (
-                f"Hi! Good to see you again. Since you're primarily {dominant.capitalize()}"
-                + (f" with secondary {secondary.capitalize()}" if secondary else "")
-                + ", I can tailor my Ayurvedic guidance to you. What would you like help with today?"
-            )
-        else:
-            answer = (
-                "Hi! I'm VedaMind, your personalized Ayurvedic wellness assistant. "
-                "Before I give you personalized guidance, I'd like to understand your "
-                "Ayurvedic constitution through a few simple questions. Would you like to begin?"
-            )
+        answer = load_template("greeting_fallback.j2").render(dosha_ref=dosha_ref).strip()
 
     for token in _split_tokens(answer):
         yield token
     yield streaming.citation_event([])
-    yield streaming.done_event(blocked=False, reason_code="greeting", tokens=0, model="cheap")
+    yield streaming.done_event(blocked=False, reason_code="greeting", tokens=0, model=used.get("model", ""))
 
 
 def _empty_kb_response(user_message: str) -> Iterator[str]:
     """Explicit response when the knowledge base has no ingested data."""
     yield streaming.low_confidence_event()
-    msg = (
-        "I don't have sufficient classical sources to answer this question. "
-        "The Ayurvedic knowledge base has not yet been populated with source texts. "
-        "Please consult a qualified Ayurvedic practitioner for personalized guidance."
-    )
+    msg = load_template("empty_kb.j2").render().strip()
     for token in _split_tokens(msg):
         yield token
     yield streaming.citation_event([])
@@ -184,7 +151,9 @@ def run(
     # 4. guardrail (binding, before generation)
     with span("guardrail", decision=""):
         result = rules_client.check(query, context, conversation_id, message_id)
-        if result.reason_code == "no_rule_found" and _has_meds(context):
+        # Only a herb the engine had no rule for is worth a second look; without one the LLM
+        # reviewer would escalate harmless questions (e.g. a routine question from someone on medication).
+        if result.reason_code == "no_rule_found" and _has_meds(context) and result.entities.get("herbs"):
             result = secondary_check.secondary_review(result, query, context)
         yield streaming.guardrail_event(result.to_event())
         if not result.allows_generation:
@@ -193,17 +162,18 @@ def run(
 
     # 5. clarifying question: if recommending herbs and user hasn't disclosed meds
     if _is_herb_recommendation(query) and not _has_meds(context) and not _has_asked_meds(context):
-        yield streaming.clarifying_question_event(
-            "Are you currently on any medication or have any diagnosed condition I should factor in?"
-        )
+        yield streaming.clarifying_question_event(CLARIFYING_MEDS_QUESTION)
         yield streaming.done_event(blocked=False, tokens=0, model="", needs_clarification=True)
         return
 
     # 6. cache (only for clean passes)
     citations = Citations()
     assembled = assemble(passages, citations)
+    history = _prior_turns(context, user_message)
+    # The answer is personalised (dosha, season, meds, prior turns), so those belong in the cache key too.
     key = llm_cache.cache_key(query, [p["chunk_id"] for p in assembled],
-                              versioning.PROMPT_VERSION, settings.llm_primary_model)
+                              versioning.PROMPT_VERSION, settings.llm_primary_model,
+                              personalization=_personalization_fingerprint(context, history))
     cached = llm_cache.get_cached(key)
     if cached:
         chip = _build_context_chip(context)
@@ -229,13 +199,15 @@ def run(
             medications=context.get("medications"),
             conditions=context.get("conditions"),
             location_context=_format_location(context.get("location"), context.get("weather")),
+            history=history,
         )
         messages.insert(1, {"role": "system", "content": SYSTEM_GUARD})
 
         answer_buf: list[str] = []
+        used: dict = {}
         _ttft_start = time.monotonic()
         yield from _stream_and_buffer(
-            router.generate(messages, tier="primary"),
+            router.generate(messages, tier="primary", used=used),
             answer_buf,
             on_first_token=lambda: logger.info(
                 "ttft", extra={"step": "ttft", "duration_ms": round((time.monotonic() - _ttft_start) * 1000, 1)},
@@ -247,7 +219,9 @@ def run(
             raise PipelineError("Empty generation from providers", recoverable=True)
 
         yield streaming.citation_event(citations.to_payload())
-        yield streaming.done_event(blocked=False, tokens=token_budget.estimate_tokens(answer), model=settings.llm_primary_model)
+        yield streaming.done_event(
+            blocked=False, tokens=token_budget.estimate_tokens(answer), model=used.get("model", settings.llm_primary_model)
+        )
         llm_cache.set_cached(key, {"answer": answer, "tokens": token_budget.estimate_tokens(answer)},
                              settings.query_cache_ttl_hours)
 
@@ -285,11 +259,21 @@ def _has_meds(context: dict) -> bool:
     return bool(context.get("medications") or context.get("conditions"))
 
 
+CLARIFYING_MEDS_QUESTION = load_template("clarifying_meds.j2").render().strip()
+
+
 def _has_asked_meds(context: dict) -> bool:
-    history = context.get("history", [])
-    for msg in history:
+    """True once we asked the medication question, or the user has talked about their medication.
+
+    Only user turns are scanned for keywords: every assistant answer ends with a disclaimer that
+    mentions "medication", which would otherwise suppress the question forever after one answer.
+    """
+    for msg in context.get("history", []):
         content = (msg.get("content") or "").lower()
-        if "medication" in content or "condition" in content or "drug" in content:
+        if msg.get("role") == "assistant":
+            if CLARIFYING_MEDS_QUESTION.lower() in content:
+                return True
+        elif "medication" in content or "condition" in content or "drug" in content or "medicine" in content:
             return True
     return False
 
@@ -327,9 +311,32 @@ def _format_location(location: dict | None, weather: dict | None) -> str | None:
     parts = []
     if weather and weather.get("condition"):
         parts.append(weather["condition"])
-    if location:
-        parts.append(f"lat {location['lat']:.2f}, lon {location['lon']:.2f}")
+    if weather and weather.get("temp_c") is not None:
+        parts.append(f"{weather['temp_c']}°C")
+    if location and location.get("lat") is not None and location.get("lon") is not None:
+        parts.append(f"lat {float(location['lat']):.2f}, lon {float(location['lon']):.2f}")
     return ", ".join(parts) if parts else None
+
+
+def _prior_turns(context: dict, user_message: str) -> list[dict]:
+    """Conversation history without the current message (Django includes it as the last turn)."""
+    history = list(context.get("history") or [])
+    if history and history[-1].get("role") == "user" and (history[-1].get("content") or "") == user_message:
+        history = history[:-1]
+    return history
+
+
+def _personalization_fingerprint(context: dict, history: list[dict]) -> str:
+    dosha = context.get("dosha") or {}
+    parts = [
+        dosha.get("dominant_dosha", ""),
+        dosha.get("secondary_dosha", ""),
+        str(context.get("season") or ""),
+        ",".join(sorted(map(str, context.get("medications") or []))),
+        ",".join(sorted(map(str, context.get("conditions") or []))),
+        "|".join((t.get("content") or "")[:200] for t in history[-6:]),
+    ]
+    return "\x1f".join(parts)
 
 
 def _split_tokens(text: str, size: int = 40) -> Iterator[str]:

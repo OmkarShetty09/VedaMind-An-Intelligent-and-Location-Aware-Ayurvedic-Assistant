@@ -7,6 +7,8 @@ export const submitQuiz = createAsyncThunk("dosha/quiz", async (answers) => {
   return data;
 });
 
+export const loadQuiz = createAsyncThunk("dosha/quiz/load", async () => doshaApi.getQuiz());
+
 export const loadProfile = createAsyncThunk("dosha/profile", async () => {
   const data = await doshaApi.getProfile();
   return data;
@@ -19,6 +21,9 @@ const doshaSlice = createSlice({
     profile: null,
     status: "idle",
     error: null,
+    profileError: null,
+    quiz: null,
+    quizError: null,
   },
   reducers: {
     clearResult(state) {
@@ -29,6 +34,7 @@ const doshaSlice = createSlice({
     builder
       .addCase(submitQuiz.pending, (state) => {
         state.status = "loading";
+        state.error = null;
       })
       .addCase(submitQuiz.fulfilled, (state, action) => {
         state.status = "done";
@@ -47,8 +53,21 @@ const doshaSlice = createSlice({
         state.status = "idle";
         state.error = action.error.message;
       })
+      .addCase(loadQuiz.fulfilled, (state, action) => {
+        state.quiz = action.payload;
+        state.quizError = null;
+      })
+      .addCase(loadQuiz.rejected, (state, action) => {
+        state.quizError = action.error.message;
+      })
+      .addCase(loadProfile.pending, (state) => {
+        state.profileError = null;
+      })
       .addCase(loadProfile.fulfilled, (state, action) => {
         state.profile = action.payload;
+      })
+      .addCase(loadProfile.rejected, (state, action) => {
+        state.profileError = action.error.message;
       });
   },
 });

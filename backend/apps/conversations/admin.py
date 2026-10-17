@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Conversation, Message
+from .models import ChatSuggestion, Conversation, Message
 
 
 class MessageInline(admin.TabularInline):
@@ -13,3 +13,10 @@ class MessageInline(admin.TabularInline):
 class ConversationAdmin(admin.ModelAdmin):
     list_display = ["user", "title", "updated_at", "deleted_at"]
     inlines = [MessageInline]
+
+
+@admin.register(ChatSuggestion)
+class ChatSuggestionAdmin(admin.ModelAdmin):
+    list_display = ["order", "text", "active"]
+    list_editable = ["active"]
+    list_display_links = ["text"]

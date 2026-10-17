@@ -1,27 +1,42 @@
 import { useEffect } from "react";
-import { useSelector } from "react-redux";
+import { useDispatch, useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 
 import { ChatWindow } from "../components/chat/ChatWindow.jsx";
 import { useAuthContext } from "../contexts/AuthContext.jsx";
 import { loadProfile } from "../store/doshaSlice.js";
-import { store } from "../store/index.js";
 
 export function ChatPage() {
   const navigate = useNavigate();
-  const { user } = useAuthContext();
-  const { profile } = useSelector((s) => s.dosha);
+  const dispatch = useDispatch();
+  const { consentAccepted } = useAuthContext();
+  const { profile, profileError } = useSelector((s) => s.dosha);
 
   useEffect(() => {
-    store.dispatch(loadProfile());
-  }, []);
+    dispatch(loadProfile());
+  }, [dispatch]);
 
   useEffect(() => {
     if (profile === null) return;
-    if (profile && !profile.dominant_dosha) {
+    // The chat API requires both the disclaimer and a dosha profile; the assessment page handles both.
+    if (!profile.dominant_dosha || !consentAccepted) {
       navigate("/dosha", { replace: true });
     }
-  }, [profile, navigate]);
+  }, [profile, consentAccepted, navigate]);
+
+  if (profileError && !profile) {
+    return (
+      <div className="flex h-[60vh] flex-col items-center justify-center gap-3 text-sm text-text-muted">
+        <p>Could not load your profile: {profileError}</p>
+        <button
+          onClick={() => dispatch(loadProfile())}
+          className="rounded-xl border border-line px-4 py-2 text-sm font-medium hover:bg-brand-50"
+        >
+          Try again
+        </button>
+      </div>
+    );
+  }
 
   if (!profile || !profile.dominant_dosha) {
     return (
@@ -34,9 +49,7 @@ export function ChatPage() {
     );
   }
 
-  const doshaLabel = profile.dominant_dosha
-    ? profile.dominant_dosha.charAt(0).toUpperCase() + profile.dominant_dosha.slice(1)
-    : "";
+  const doshaLabel = profile.dominant_dosha.charAt(0).toUpperCase() + profile.dominant_dosha.slice(1);
 
   return (
     <div className="flex h-[calc(100vh-8rem)] flex-col">
@@ -47,11 +60,9 @@ export function ChatPage() {
             Grounded in classical texts, with safety checks on every answer.
           </p>
         </div>
-        {doshaLabel && (
-          <span className="shrink-0 rounded-full border border-brand/20 bg-brand-50 px-3 py-1 text-xs font-medium text-brand">
-            {doshaLabel} type
-          </span>
-        )}
+        <span className="shrink-0 rounded-full border border-brand/20 bg-brand-50 px-3 py-1 text-xs font-medium text-brand">
+          {doshaLabel} type
+        </span>
       </div>
       <ChatWindow />
     </div>

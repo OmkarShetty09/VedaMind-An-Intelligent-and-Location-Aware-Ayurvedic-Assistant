@@ -17,8 +17,10 @@ def _redis():
     return _cache
 
 
-def cache_key(query: str, context_ids: list[str], prompt_version: str, model: str) -> str:
-    blob = json.dumps([query.lower().strip(), sorted(context_ids), prompt_version, model], sort_keys=True)
+def cache_key(query: str, context_ids: list[str], prompt_version: str, model: str, personalization: str = "") -> str:
+    blob = json.dumps(
+        [query.lower().strip(), sorted(context_ids), prompt_version, model, personalization], sort_keys=True
+    )
     return "rag:q:" + hashlib.sha256(blob.encode()).hexdigest()
 
 

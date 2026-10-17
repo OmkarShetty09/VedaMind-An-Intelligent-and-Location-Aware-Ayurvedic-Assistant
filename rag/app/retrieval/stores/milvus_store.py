@@ -11,7 +11,7 @@ class MilvusStore(VectorStore):
     Kept behind the same interface so the swap is a config flag (VECTOR_STORE).
     """
 
-    def __init__(self, uri: str = "http://milvus:19530"):
+    def __init__(self, uri: str):
         self._uri = uri
         self._client = None
 

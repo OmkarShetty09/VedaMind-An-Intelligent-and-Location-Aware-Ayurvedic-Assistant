@@ -1,11 +1,29 @@
 import { CitationMarker } from "./CitationMarker.jsx";
 import { SourceCitation } from "./SourceCitation.jsx";
+import { normalizeMarkdown, renderInline } from "../../utils/formatText.jsx";
 import { parseCitations } from "../../utils/parseCitations.js";
 
 export function MessageBubble({ message }) {
   const isUser = message.role === "user";
   const showCitations = !isUser && !message.streaming && message.citations?.length > 0;
-  const segments = showCitations ? parseCitations(message.content) : null;
+  const segments = showCitations ? parseCitations(normalizeMarkdown(message.content)) : null;
+
+  if (!isUser && !message.content && !message.streaming) {
+    // A turn that produced no answer text: refused by the safety layer, or a clarifying question.
+    const text = message.clarifying_question
+      ? message.clarifying_question
+      : message.blocked
+        ? "I can't answer this one safely. Please check with a qualified practitioner."
+        : null;
+    if (!text) return null;
+    return (
+      <div className="flex justify-start">
+        <div className="max-w-[80%] rounded-2xl rounded-bl-md border border-line bg-white px-4 py-3 text-sm italic leading-relaxed text-text-muted shadow-soft sm:max-w-[75%]">
+          {text}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -19,19 +37,21 @@ export function MessageBubble({ message }) {
         }`}
       >
         <div className="whitespace-pre-wrap">
-          {segments
-            ? segments.map((seg, i) =>
-                seg.type === "citation" ? (
-                  <CitationMarker
-                    key={i}
-                    id={seg.id}
-                    citation={message.citations.find((c) => c.id === seg.id)}
-                  />
-                ) : (
-                  <span key={i}>{seg.value}</span>
+          {isUser
+            ? message.content
+            : segments
+              ? segments.map((seg, i) =>
+                  seg.type === "citation" ? (
+                    <CitationMarker
+                      key={i}
+                      id={seg.id}
+                      citation={message.citations.find((c) => c.id === seg.id)}
+                    />
+                  ) : (
+                    <span key={i}>{renderInline(seg.value, `s${i}`)}</span>
+                  )
                 )
-              )
-            : message.content}
+              : renderInline(normalizeMarkdown(message.content))}
         </div>
         {message.streaming && (
           <span className="ml-0.5 inline-block animate-pulse text-brand">|</span>

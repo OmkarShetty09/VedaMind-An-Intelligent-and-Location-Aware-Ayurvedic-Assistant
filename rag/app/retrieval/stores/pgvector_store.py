@@ -2,6 +2,7 @@
 
 import hashlib
 import logging
+import re
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -40,6 +41,16 @@ class PgVectorStore(VectorStore):
     def _ensure_table(self):
         with self._connect() as conn:
             conn.autocommit = True
+            try:
+                conn.execute("CREATE EXTENSION IF NOT EXISTS vector;")
+            except psycopg.errors.InsufficientPrivilege as exc:
+                raise RuntimeError(
+                    "The pgvector extension is not enabled in this database and the configured user may not "
+                    "create it. Run as the postgres superuser:  psql -U postgres -d vedamind -c "
+                    '"CREATE EXTENSION IF NOT EXISTS vector;"'
+                ) from exc
+            except (psycopg.errors.UndefinedFile, psycopg.errors.FeatureNotSupported) as exc:
+                raise RuntimeError("pgvector is not installed on this PostgreSQL server (see README).") from exc
             conn.execute(f"""
                 CREATE TABLE IF NOT EXISTS rag_chunks (
                     id TEXT PRIMARY KEY,
@@ -73,19 +84,22 @@ class PgVectorStore(VectorStore):
         return [Passage(chunk_id=r[0], text=r[1], metadata=dict(r[2]), score=float(r[3])) for r in rows]
 
     def search_sparse(self, query, top_k, filters=None) -> list[Passage]:
+        terms = _keyword_query(query)
+        if not terms:
+            return []
         where, params = _where_clause(filters)
         cond = "fts @@ q"
         if where:
             cond += " AND " + where[len("WHERE "):]
         sql = f"""
             SELECT id, content, metadata, ts_rank(fts, q) AS score
-            FROM rag_chunks, plainto_tsquery('english', %s) AS q
+            FROM rag_chunks, websearch_to_tsquery('english', %s) AS q
             WHERE {cond}
             ORDER BY score DESC
             LIMIT %s
         """
         with self._connect() as conn:
-            rows = conn.execute(sql, (query, *params, top_k)).fetchall()
+            rows = conn.execute(sql, (terms, *params, top_k)).fetchall()
         return [Passage(chunk_id=r[0], text=r[1], metadata=dict(r[2]), score=float(r[3] or 0.0)) for r in rows]
 
     def upsert(self, chunks, embeddings) -> int:
@@ -158,6 +172,18 @@ class PgVectorStore(VectorStore):
                 "SELECT DISTINCT source_type FROM rag_chunks WHERE source_type IS NOT NULL ORDER BY source_type"
             ).fetchall()
             return [r[0] for r in rows]
+
+
+def _keyword_query(query: str) -> str:
+    """'what helps vata in winter?' -> 'what or helps or vata or in or winter'.
+
+    plainto_tsquery ANDs every word, so a natural-language question only matches chunks that
+    contain all of its words (usually none). OR-ing the words and letting ts_rank order the hits
+    keeps sparse retrieval useful; websearch_to_tsquery drops the stop words and never raises
+    on user input.
+    """
+    words = re.findall(r"[^\W_]+", query.lower())
+    return " or ".join(w for w in words if w != "or")
 
 
 def _where_clause(filters: dict | None) -> tuple[str, list]:

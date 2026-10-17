@@ -1,7 +1,6 @@
+// Visual styling only; the dosha's name and element come from the API (DoshaInfo, edited in the admin).
 const DOSHA_CONFIG = {
   vata: {
-    label: "Vata",
-    element: "Air & Space",
     color: "bg-teal-500",
     track: "bg-teal-100",
     textColor: "text-teal-700",
@@ -12,8 +11,6 @@ const DOSHA_CONFIG = {
     ),
   },
   pitta: {
-    label: "Pitta",
-    element: "Fire & Water",
     color: "bg-amber-500",
     track: "bg-amber-100",
     textColor: "text-amber-700",
@@ -25,8 +22,6 @@ const DOSHA_CONFIG = {
     ),
   },
   kapha: {
-    label: "Kapha",
-    element: "Earth & Water",
     color: "bg-emerald-600",
     track: "bg-emerald-100",
     textColor: "text-emerald-700",
@@ -39,7 +34,7 @@ const DOSHA_CONFIG = {
   },
 };
 
-export function DoshaScaleBar({ dosha, count, percentage, total, isPrimary, isSecondary }) {
+export function DoshaScaleBar({ dosha, count, percentage, total, isPrimary, isSecondary, info }) {
   const pct = Math.max(0, Math.min(100, Math.round(percentage)));
   const cfg = DOSHA_CONFIG[dosha] || DOSHA_CONFIG.vata;
 
@@ -54,8 +49,8 @@ export function DoshaScaleBar({ dosha, count, percentage, total, isPrimary, isSe
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <span className={cfg.textColor}>{cfg.icon}</span>
-          <span className="text-sm font-medium text-text">{cfg.label}</span>
-          <span className="text-xs text-text-muted">{cfg.element}</span>
+          <span className="text-sm font-medium text-text">{info?.label || dosha}</span>
+          <span className="text-xs text-text-muted">{info?.element || ""}</span>
           {isPrimary && (
             <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-semibold text-brand">
               Primary
