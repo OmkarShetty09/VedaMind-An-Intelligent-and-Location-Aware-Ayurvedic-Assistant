@@ -18,15 +18,17 @@ IST = ZoneInfo("Asia/Kolkata")
 
 
 class FakeProfile:
-    def __init__(self, dosha):
+    def __init__(self, dosha, secondary="", scores=None):
         self.dominant_dosha = dosha
+        self.secondary_dosha = secondary
+        self.vikriti_scores = scores or {}
 
 
 class FakeUser:
     timezone = "Asia/Kolkata"
 
-    def __init__(self, dosha=None):
-        self.dosha_profile = FakeProfile(dosha) if dosha else None
+    def __init__(self, dosha=None, secondary="", scores=None):
+        self.dosha_profile = FakeProfile(dosha, secondary, scores) if dosha else None
 
 
 def routine_for(user=None, when=datetime(2026, 10, 17, 9, 0, tzinfo=IST), **kwargs):
@@ -64,6 +66,39 @@ def test_season_and_dosha_overrides():
     pitta = by_title(routine_for(FakeUser("pitta")))["Sleep"]
     assert (kapha["start"], pitta["start"]) == (time(21, 30), time(22, 30))
     assert "kapha constitution" in kapha["description"] and kapha["dosha_target"] == "kapha"
+
+
+def test_without_an_assessment_the_routine_is_general():
+    routine = routine_for()
+    assert routine["personalization"]["assessed"] is False
+    assert not any(a["personalized"] for a in routine["activities"])
+    titles = set(by_title(routine))
+    assert not titles & {"Stay out of the harsh sun", "Short walk instead of a nap", "Warm drink and a pause"}
+
+
+def test_each_dosha_gets_its_own_routine():
+    vata, pitta, kapha = (by_title(routine_for(FakeUser(d))) for d in ("vata", "pitta", "kapha"))
+    assert len({frozenset(vata), frozenset(pitta), frozenset(kapha)}) == 3
+    assert "Daily abhyanga (warm sesame oil)" in vata and "Warm drink and a pause" in vata
+    assert "Sheetali / sheetkari (cooling breath)" in pitta and "Stay out of the harsh sun" in pitta
+    assert "Dry massage (udvartana)" in kapha and "Short walk instead of a nap" in kapha
+    assert "Vigorous exercise" in kapha and "Gentle movement (yoga, walking)" in vata
+    # Kapha wakes earliest, vata latest.
+    rise = {d: by_title(routine_for(FakeUser(d)))["Rise with the day"]["start"] for d in ("vata", "pitta", "kapha")}
+    assert rise["kapha"] < rise["pitta"] < rise["vata"]
+
+
+def test_dual_dosha_blends_the_secondary():
+    routine = routine_for(FakeUser("pitta", "kapha", {"vata": 2, "pitta": 8, "kapha": 6}))
+    acts = by_title(routine)
+    assert "Stay out of the harsh sun" in acts and "Short walk instead of a nap" in acts
+    assert "Warm drink and a pause" not in acts
+    assert any(r.startswith("For your secondary Kapha:") for r in acts["Main meal"]["reasons"])
+    assert any(r.startswith("For your Pitta:") for r in acts["Main meal"]["reasons"])
+    p = routine["personalization"]
+    assert (p["assessed"], p["dominant"], p["secondary"], p["classification"]) == (True, "pitta", "kapha", "dual")
+    assert p["percentages"] == {"vata": 12, "pitta": 50, "kapha": 38}
+    assert p["focus"] and p["secondary_focus"]
 
 
 def test_no_location_uses_fallback_sun_times():
@@ -114,3 +149,22 @@ def test_today_uses_the_users_local_date():
     today = client.get("/api/v1/dinacharya/today")
     assert today.status_code == 200
     assert today.json()["date"] == generated.json()["date"]
+
+
+@pytest.mark.django_db
+def test_today_rebuilds_after_a_new_assessment():
+    user = User.objects.create_user(email="r@example.com", name="R", password="Sup3r-Secret-pass!")
+    profile = user.dosha_profile  # created by the post-save signal
+    profile.dominant_dosha, profile.vikriti_scores = "vata", {"vata": 9}
+    profile.save()
+    client = APIClient()
+    client.force_authenticate(user)
+    first = client.get("/api/v1/dinacharya/recommend").json()
+    assert first["personalization"]["dominant"] == "vata"
+
+    profile.dominant_dosha = "kapha"
+    profile.vikriti_scores = {"kapha": 9}
+    profile.save()
+    today = client.get("/api/v1/dinacharya/today").json()
+    assert today["personalization"]["dominant"] == "kapha"
+    assert "Dry massage (udvartana)" in {a["title"] for a in today["activities"]}

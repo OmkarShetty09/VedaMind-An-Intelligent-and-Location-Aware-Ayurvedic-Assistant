@@ -27,6 +27,7 @@ class Message(TimestampedModel):
     role = models.CharField(max_length=16, choices=[("user", "user"), ("assistant", "assistant"), ("system", "system")])
     content = models.TextField(null=True, blank=True)  # noqa: DJ001 - null marks guardrail-blocked turns
     source_citations = models.JSONField(default=list)
+    cautions = models.JSONField(default=dict, blank=True)  # "what not to take it with" (guardrails.cautions)
     guardrail_decision = models.ForeignKey(
         "interactions_log.GuardrailDecision", on_delete=models.SET_NULL, null=True, blank=True, related_name="+"
     )

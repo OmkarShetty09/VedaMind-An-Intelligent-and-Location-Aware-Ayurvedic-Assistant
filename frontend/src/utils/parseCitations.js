@@ -1,5 +1,6 @@
-// Matches [S1] and grouped forms the model also writes: [S1, S5] / [S1, 5] / [S1; S2].
-const CITATION_RE = /\[(S\d+(?:\s*[,;]\s*S?\d+)*)\]/g;
+// Matches [S1] and grouped forms the model also writes: [S1, S5] / [S1, 5] / [S1; S2], also with the
+// full-width brackets some models use (【S1】, ［S1］).
+const CITATION_RE = /[[【［](S\d+(?:\s*[,;、]\s*S?\d+)*)[\]】］]/g;
 
 export function parseCitations(text) {
   if (!text) return [{ type: "text", value: "" }];
@@ -13,7 +14,7 @@ export function parseCitations(text) {
     if (match.index > lastIndex) {
       segments.push({ type: "text", value: text.slice(lastIndex, match.index) });
     }
-    for (const part of match[1].split(/[,;]/)) {
+    for (const part of match[1].split(/[,;、]/)) {
       const id = `S${part.trim().replace(/^S/, "")}`;
       segments.push({ type: "citation", id, raw: `[${id}]` });
     }

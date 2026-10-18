@@ -10,6 +10,7 @@
   "publisher": "Charak Samhita Research, Training and Skill Development Centre (CCRAS/NIIMH)",
   "publication_year": 2020,
   "source_url": "https://www.carakasamhitaonline.com/",
+  "chapter_url_template": "https://www.carakasamhitaonline.com/index.php?title=Special:Search&go=Go&search={chapter}",
   "provenance": "Academic project by CCRAS/NIIMH, Government of India. 135 contributors. DOIs assigned per chapter.",
   "description": "Definitive online edition of Ayurveda's core treatise. Contains original Sanskrit text with diacritics, transliteration, English translation, and scholarly commentary (Tattva Vimarsha, Vidhi Vimarsha). 805 articles covering all 8 sthanas (sections).",
   "corpus_status": "READY",

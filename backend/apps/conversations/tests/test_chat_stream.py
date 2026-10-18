@@ -129,3 +129,33 @@ def test_chat_requires_consent():
     client = APIClient()
     client.force_authenticate(user)
     assert client.post("/api/v1/chat/", {"message": "hi"}, format="json").status_code == 403
+
+
+def test_answers_carry_what_not_to_take_it_with(monkeypatch):
+    from django.core.management import call_command
+
+    call_command("seed_demo_data")
+    fake_rag(
+        monkeypatch,
+        [
+            {"type": "token", "delta": "Turmeric is warming and supports digestion [S1]."},
+            {"type": "citation", "sources": [{"id": "S1", "source": "ayurwiki_herbs"}]},
+            {"type": "done", "blocked": False, "tokens": 9, "model": "m"},
+        ],
+    )
+    client, _ = consented_client()
+    events = sse_events(client.post("/api/v1/chat/", {"message": "is it good for digestion?"}, format="json"))
+    cautions = dict(events)["done"]["cautions"]
+    assert cautions["herbs"] == ["turmeric"]
+    assert "Warfarin" in {i["avoid_with"] for i in cautions["items"]}
+    assert cautions["general"]
+    assert Message.objects.get(role="assistant").cautions == cautions
+
+
+def test_greetings_have_no_cautions(monkeypatch):
+    fake_rag(monkeypatch, [{"type": "token", "delta": "Hello!"},
+                           {"type": "done", "blocked": False, "reason_code": "greeting"}])
+    client, _ = consented_client()
+    events = sse_events(client.post("/api/v1/chat/", {"message": "hi"}, format="json"))
+    assert "cautions" not in dict(events)["done"]
+    assert Message.objects.get(role="assistant").cautions == {}

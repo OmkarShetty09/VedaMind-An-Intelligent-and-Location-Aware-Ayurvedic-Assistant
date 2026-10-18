@@ -1,3 +1,4 @@
+import { DoshaPersonalizationBanner } from "./DoshaPersonalizationBanner.jsx";
 import { RoutineEmptyState } from "./RoutineEmptyState.jsx";
 import { RoutineTimeline } from "./RoutineTimeline.jsx";
 import { WeatherContextBanner } from "./WeatherContextBanner.jsx";
@@ -15,6 +16,7 @@ export function DinacharyaCard({ routine, weather, weatherLoading, onRefreshWeat
   }
   return (
     <div className="space-y-4">
+      {routine && <DoshaPersonalizationBanner personalization={routine.personalization} />}
       {weather && <WeatherContextBanner weather={weather} refreshing={weatherLoading} onRefresh={onRefreshWeather} />}
       {routine && (
         <div className="flex justify-end">
@@ -33,7 +35,11 @@ export function DinacharyaCard({ routine, weather, weatherLoading, onRefreshWeat
       {!routine ? (
         <RoutineEmptyState onRegenerate={onRegenerate} />
       ) : (
-        <RoutineTimeline activities={routine.activities || []} seasonInfo={routine.season_info} />
+        <RoutineTimeline
+          activities={routine.activities || []}
+          seasonInfo={routine.season_info}
+          dosha={routine.personalization?.assessed ? routine.personalization : null}
+        />
       )}
     </div>
   );

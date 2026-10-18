@@ -1,5 +1,10 @@
 {
-  "_comment": "Initial Dinacharya activities (loaded by a migration; edit them in the admin afterwards). start/end: {anchor: sunrise|sunset|clock, offset_minutes, clock, fallback_clock}. {dosha} in text = the user's dosha. season_overrides / dosha_overrides replace fields for that season / dosha. above_temperature_c: only include when it is hotter than this.",
+  "_comment": "Dinacharya activities (loaded by migrations; edit them in the admin afterwards). start/end: {anchor: sunrise|sunset|clock, offset_minutes, clock, fallback_clock}. {dosha} in text = the user's assessed dosha, {secondary} = their secondary dosha. season_overrides / dosha_overrides replace fields for that season / the user's dominant dosha (dosha wins over season). dosha_tips adds a reason for the dominant dosha and, labelled, for the secondary one. doshas: only include for users whose dominant dosha is listed. above_temperature_c: only include when it is hotter than this. Without a dosha assessment the routine is the general (non-dosha) version.",
+  "dosha_focus": {
+    "vata": "Warmth, regularity and grounding: same times every day, warm oiled food, gentle movement, early and steady sleep.",
+    "pitta": "Cooling and moderation: avoid overheating and midday sun, favour cool sweet foods, keep exercise non-competitive, wind down before late-night work.",
+    "kapha": "Lightness and stimulation: rise early, move vigorously, eat light and warm, and skip the daytime nap."
+  },
   "templates": [
     {
       "key": "rise-with-the-day", "order": 0, "time_of_day": "brahma_muhurta",
@@ -9,7 +14,23 @@
       "description": "Wake before sunrise; sit quietly for a few minutes.",
       "reasons": ["Brahma muhurta is associated with a calm mind (classical timing)."],
       "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 2, vv. 1-3"}],
-      "dosha_target": "vata"
+      "dosha_target": "vata",
+      "dosha_overrides": {
+        "vata": {
+          "start": {"anchor": "sunrise", "offset_minutes": -60, "fallback_clock": "06:00"},
+          "description": "Wake before sunrise at the same time every day, then sit quietly for a few minutes before getting busy.",
+          "reasons": ["A fixed wake time is one of the most steadying habits for vata, which is easily unsettled by irregularity."]
+        },
+        "pitta": {
+          "start": {"anchor": "sunrise", "offset_minutes": -75, "fallback_clock": "06:00"},
+          "description": "Wake before sunrise and spend a few calm minutes before checking messages or planning the day.",
+          "reasons": ["Starting the day unhurried keeps pitta's sharpness from turning into irritation."]
+        },
+        "kapha": {
+          "description": "Wake in brahma muhurta and get up straight away; avoid lingering in bed after waking.",
+          "reasons": ["Kapha is heaviest in the early morning; rising early and promptly counters sluggishness."]
+        }
+      }
     },
     {
       "key": "warm-water", "order": 1, "time_of_day": "sunrise",
@@ -19,7 +40,12 @@
       "description": "Drink warm water; clean the tongue gently.",
       "reasons": ["Warm water supports digestion and hydration."],
       "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 5"}],
-      "dosha_target": "kapha"
+      "dosha_target": "kapha",
+      "dosha_tips": {
+        "vata": "Sip it warm and slowly; warm liquids counter vata's dryness.",
+        "pitta": "Lukewarm rather than hot water suits pitta.",
+        "kapha": "Warm water (never iced) helps clear morning heaviness."
+      }
     },
     {
       "key": "self-massage", "order": 2, "time_of_day": "sunrise",
@@ -34,17 +60,109 @@
         "shishir": {"title": "Self-massage (sesame oil)", "description": "A short abhyanga with sesame oil before bathing.", "reasons": ["Sesame oil is seasonally balancing for your climate."]},
         "hemant": {"title": "Self-massage (sesame oil)", "description": "A short abhyanga with sesame oil before bathing.", "reasons": ["Sesame oil is seasonally balancing for your climate."]},
         "vasant": {"title": "Self-massage (sesame oil)", "description": "A short abhyanga with sesame oil before bathing.", "reasons": ["Sesame oil is seasonally balancing for your climate."]}
+      },
+      "dosha_overrides": {
+        "vata": {
+          "title": "Daily abhyanga (warm sesame oil)",
+          "description": "Massage warm sesame oil into the whole body, with extra on the head, ears and soles of the feet. Rest a few minutes, then bathe in warm water.",
+          "reasons": ["Oil massage is the classical counter to vata's dry, rough and cold qualities; vata benefits from it every day."]
+        },
+        "pitta": {
+          "title": "Abhyanga (coconut oil)",
+          "description": "A gentle massage with coconut or sunflower oil at room temperature, then a lukewarm (not hot) bath.",
+          "reasons": ["Cooling oils and lukewarm water keep pitta's heat from building."]
+        },
+        "kapha": {
+          "title": "Dry massage (udvartana)",
+          "description": "Brisk upward strokes with a dry herbal powder or chickpea flour (or a raw-silk glove), then a warm shower. Use oil sparingly, if at all.",
+          "reasons": ["Udvartana (powder massage) reduces kapha and heaviness, where daily oiling would add to it."],
+          "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 2, v. 15"}]
+        }
       }
     },
     {
-      "key": "movement", "order": 3, "time_of_day": "mid_morning",
+      "key": "pranayama", "order": 3, "time_of_day": "sunrise",
+      "start": {"anchor": "sunrise", "offset_minutes": 50, "fallback_clock": "06:00"},
+      "end": {"anchor": "sunrise", "offset_minutes": 65, "fallback_clock": "06:00"},
+      "title": "Breathing practice (pranayama)",
+      "description": "Ten minutes of slow, even breathing in a quiet place before the day starts.",
+      "reasons": ["Calm breathing settles the mind before activity."],
+      "citations": [{"source": "Hatha Yoga Pradipika", "ref": "Chapter 2"}],
+      "dosha_target": "vata",
+      "dosha_overrides": {
+        "vata": {
+          "title": "Nadi shodhana (alternate-nostril breathing)",
+          "description": "Ten minutes of slow alternate-nostril breathing, seated comfortably and kept warm.",
+          "reasons": ["Slow, balanced breathing calms vata's restlessness and anxiety."]
+        },
+        "pitta": {
+          "title": "Sheetali / sheetkari (cooling breath)",
+          "description": "Inhale slowly through a curled tongue (or through the teeth) and exhale through the nose, for 5-10 minutes.",
+          "reasons": ["Cooling breaths are traditionally used to release excess pitta heat."]
+        },
+        "kapha": {
+          "title": "Kapalabhati / bhastrika (energising breath)",
+          "description": "A few rounds of brisk, forceful exhalations, resting between rounds. Skip it if you are pregnant or have high blood pressure, heart disease or a hernia.",
+          "reasons": ["Energising breath stimulates kapha's slowness and clears the chest."]
+        }
+      }
+    },
+    {
+      "key": "movement", "order": 4, "time_of_day": "mid_morning",
       "start": {"anchor": "sunrise", "offset_minutes": 120, "fallback_clock": "06:00"},
       "end": {"anchor": "sunrise", "offset_minutes": 180, "fallback_clock": "06:00"},
       "title": "Movement / exercise",
       "description": "Moderate exercise until mild perspiration; stop before exhaustion.",
       "reasons": ["Exercise supports kapha balance and digestion."],
       "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 7"}],
-      "dosha_target": "kapha"
+      "dosha_target": "kapha",
+      "dosha_overrides": {
+        "vata": {
+          "title": "Gentle movement (yoga, walking)",
+          "end": {"anchor": "sunrise", "offset_minutes": 150, "fallback_clock": "06:00"},
+          "description": "Slow, grounding practice: gentle yoga, walking or swimming. Stop well before you feel tired.",
+          "reasons": ["Over-exertion aggravates vata; the classical rule is to exercise to only half of one's capacity."],
+          "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 2, vv. 10-14"}]
+        },
+        "pitta": {
+          "title": "Moderate exercise (in the cool hours)",
+          "description": "Swimming, cycling or yoga while it is still cool; avoid competitive, overheated workouts and the midday sun.",
+          "reasons": ["Pitta overheats easily; moderate, non-competitive exercise keeps it balanced."]
+        },
+        "kapha": {
+          "title": "Vigorous exercise",
+          "start": {"anchor": "sunrise", "offset_minutes": 75, "fallback_clock": "06:00"},
+          "description": "Your most active session of the day: brisk running, sun salutations or strength work until you sweat.",
+          "reasons": ["Kapha benefits most from vigorous exercise; it clears heaviness and sluggishness."]
+        }
+      }
+    },
+    {
+      "key": "breakfast", "order": 5, "time_of_day": "morning",
+      "start": {"anchor": "clock", "clock": "08:00"},
+      "end": {"anchor": "clock", "clock": "08:30"},
+      "title": "Breakfast (only when hungry)",
+      "description": "A modest, warm breakfast once the previous evening's meal is digested.",
+      "reasons": ["Eat when the last meal has been digested and hunger has returned."],
+      "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 5 (matrashitiya)"}],
+      "dosha_target": "",
+      "dosha_overrides": {
+        "vata": {
+          "title": "Warm, nourishing breakfast",
+          "description": "Cooked porridge with a little ghee and stewed fruit. Avoid cold, dry foods such as cereal or raw salads, and don't skip it.",
+          "reasons": ["Warm, moist, regular meals steady vata digestion."]
+        },
+        "pitta": {
+          "title": "Cooling breakfast",
+          "description": "Sweet fruit, oats or rice porridge. Avoid coffee on an empty stomach and spicy, sour or fried food.",
+          "reasons": ["Pitta's strong appetite should be met, with cooling foods, before it turns into irritability."]
+        },
+        "kapha": {
+          "title": "Light breakfast, or skip it",
+          "description": "Only if you are truly hungry: a little warm fruit or a spiced herbal drink. A heavy breakfast slows kapha digestion.",
+          "reasons": ["Kapha digestion is slow in the morning; a light or skipped breakfast is traditionally advised."]
+        }
+      }
     },
     {
       "key": "main-meal", "order": 10, "time_of_day": "midday",
@@ -53,11 +171,49 @@
       "title": "Main meal",
       "description": "Eat your largest meal now, when digestive fire (agni) is strongest. Eat mindfully, until comfortably full.",
       "reasons": ["Midday is the classical peak of agni."],
-      "citations": [{"source": "Charaka Samhita", "ref": "Vimanasthana 1"}],
-      "dosha_target": "pitta"
+      "citations": [{"source": "Charaka Samhita", "ref": "Vimanasthana 1"}, {"source": "Ashtanga Hridaya", "ref": "Sutrasthana 1, vv. 14-15 (tastes and doshas)"}],
+      "dosha_target": "pitta",
+      "dosha_tips": {
+        "vata": "Favour warm, moist, well-oiled food with sweet, sour and salty tastes.",
+        "pitta": "Favour sweet, bitter and astringent tastes; go easy on chilli, sour and salty food.",
+        "kapha": "Favour pungent, bitter and astringent tastes; keep the meal warm, light and low in oil and sweets."
+      }
     },
     {
-      "key": "light-dinner", "order": 11, "time_of_day": "evening",
+      "key": "pitta-midday-sun", "order": 12, "time_of_day": "afternoon",
+      "start": {"anchor": "clock", "clock": "13:30"},
+      "end": {"anchor": "clock", "clock": "15:00"},
+      "title": "Stay out of the harsh sun",
+      "description": "Keep out of the strongest midday sun; cover your head outdoors and sip cool (not iced) water.",
+      "reasons": ["Midday is pitta time of day; heat and sun push pitta out of balance fastest now."],
+      "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 1, v. 8"}],
+      "dosha_target": "pitta",
+      "doshas": ["pitta"]
+    },
+    {
+      "key": "kapha-no-day-sleep", "order": 13, "time_of_day": "afternoon",
+      "start": {"anchor": "clock", "clock": "13:45"},
+      "end": {"anchor": "clock", "clock": "14:00"},
+      "title": "Short walk instead of a nap",
+      "description": "Stay up after lunch: walk for 10-15 minutes rather than lying down.",
+      "reasons": ["Day sleep increases kapha; the texts allow it mainly in peak summer or for the weak."],
+      "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 21 (day sleep)"}],
+      "dosha_target": "kapha",
+      "doshas": ["kapha"]
+    },
+    {
+      "key": "vata-afternoon-pause", "order": 14, "time_of_day": "afternoon",
+      "start": {"anchor": "clock", "clock": "15:30"},
+      "end": {"anchor": "clock", "clock": "15:45"},
+      "title": "Warm drink and a pause",
+      "description": "Late afternoon is vata time of day: stop for a warm drink and a few slow breaths, and have a small snack if you are hungry.",
+      "reasons": ["Vata rises in the late afternoon; warmth and a short pause prevent the usual energy dip and scattered mind."],
+      "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 1, v. 8"}],
+      "dosha_target": "vata",
+      "doshas": ["vata"]
+    },
+    {
+      "key": "light-dinner", "order": 15, "time_of_day": "evening",
       "start": {"anchor": "clock", "clock": "19:00"},
       "end": {"anchor": "clock", "clock": "20:00"},
       "title": "Light dinner",
@@ -68,6 +224,17 @@
       "season_overrides": {
         "varsha": {"description": "In the monsoon, digestion is weaker: prefer light, warm, well-spiced food."},
         "grishma": {"description": "In peak summer, favor cool, light meals and hydration."}
+      },
+      "dosha_overrides": {
+        "kapha": {
+          "start": {"anchor": "clock", "clock": "18:30"},
+          "end": {"anchor": "clock", "clock": "19:15"}
+        }
+      },
+      "dosha_tips": {
+        "vata": "A warm soup, khichdi or stew at a regular time; don't skip dinner.",
+        "pitta": "A moderate, not spicy meal; avoid alcohol and fermented, sour food in the evening.",
+        "kapha": "Make this the lightest meal of the day (soup or steamed vegetables) and finish early."
       }
     },
     {
@@ -78,7 +245,12 @@
       "description": "A short evening walk; reduce stimulation as light fades.",
       "reasons": ["Matching activity to the light cycle steadies the mind."],
       "citations": [{"source": "Ashtanga Hridaya", "ref": "Sutrasthana 2"}],
-      "dosha_target": "vata"
+      "dosha_target": "vata",
+      "dosha_tips": {
+        "vata": "Keep it slow and dress warmly; evening wind and cold aggravate vata.",
+        "pitta": "An unhurried walk somewhere green or near water is especially cooling.",
+        "kapha": "Walk briskly; this is a good second chance to move today."
+      }
     },
     {
       "key": "afternoon-rest", "order": 21, "time_of_day": "afternoon",
@@ -99,20 +271,49 @@
       "description": "Dim lights, avoid screens, light reading or quiet reflection.",
       "reasons": ["Reduced stimulation before sleep improves nidra (restorative sleep)."],
       "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 21 (nidra)"}],
-      "dosha_target": "vata"
+      "dosha_target": "vata",
+      "dosha_overrides": {
+        "vata": {
+          "description": "Rub a little warm oil into the soles of the feet, keep lights low and screens off, and go to bed at the same time every night.",
+          "reasons": ["Foot massage (padabhyanga) and a fixed bedtime are classical aids to sleep for vata."]
+        },
+        "pitta": {
+          "description": "Keep the room cool and quiet; put work, arguments and screens away for the night.",
+          "reasons": ["Late-night work keeps pitta's mind 'switched on'; cooling down first protects sleep."]
+        },
+        "kapha": {
+          "description": "Light stretching or reading rather than TV on the couch, and nothing more to eat after dinner.",
+          "reasons": ["A little activity and an empty stomach at bedtime keep kapha from feeling heavy next morning."]
+        }
+      }
     },
     {
       "key": "sleep", "order": 31, "time_of_day": "night",
       "start": {"anchor": "clock", "clock": "22:00"},
       "end": null,
       "title": "Sleep",
-      "description": "Aim for 7-8 hours of sleep. Your routine is tuned to a {dosha} constitution.",
-      "reasons": ["Kapha-predominant people often need earlier sleep; pitta later."],
+      "description": "Aim for 7-8 hours of sleep.",
+      "reasons": ["Regular, sufficient sleep is one of the three pillars of health (with food and right conduct)."],
       "citations": [{"source": "Charaka Samhita", "ref": "Sutrasthana 21"}],
-      "dosha_target": "{dosha}",
+      "dosha_target": "",
       "dosha_overrides": {
-        "kapha": {"start": {"anchor": "clock", "clock": "21:30"}},
-        "pitta": {"start": {"anchor": "clock", "clock": "22:30"}}
+        "vata": {
+          "description": "Aim for 7-8 hours at a fixed bedtime. Your routine is tuned to a {dosha} constitution.",
+          "reasons": ["Vata needs the most regular and the most sleep of the three doshas."],
+          "dosha_target": "vata"
+        },
+        "kapha": {
+          "start": {"anchor": "clock", "clock": "21:30"},
+          "description": "Sleep early and rise early: about 7 hours is enough. Your routine is tuned to a {dosha} constitution.",
+          "reasons": ["Kapha-predominant people do best sleeping early and not oversleeping."],
+          "dosha_target": "kapha"
+        },
+        "pitta": {
+          "start": {"anchor": "clock", "clock": "22:30"},
+          "description": "Be in bed by 22:30, before the late-night pitta period keeps you working. Your routine is tuned to a {dosha} constitution.",
+          "reasons": ["The late-night hours are pitta time; staying up past them invites a 'second wind' and poor sleep."],
+          "dosha_target": "pitta"
+        }
       }
     }
   ]

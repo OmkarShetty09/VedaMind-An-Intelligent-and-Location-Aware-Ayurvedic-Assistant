@@ -2,14 +2,16 @@
 
 The LLM never invents activities or times. The activities are RoutineTemplate rows (edited in the
 admin); this engine resolves their times against the user's sunrise/sunset, season, weather and
-dosha, and emits the structured schedule.
+assessed dosha (dominant + secondary), and emits the structured schedule. Without a dosha
+assessment the routine is the general one, flagged as not personalized.
 """
 
+import json
 from dataclasses import dataclass
 from datetime import date, datetime, time, timedelta
+from functools import lru_cache
+from pathlib import Path
 from zoneinfo import ZoneInfo
-
-from django.conf import settings
 
 from .kala import approx_sunrise, classify
 from .ritu import season_for
@@ -24,12 +26,46 @@ class RoutineContext:
     temperature_c: float | None
     humidity: float | None
     dominant_dosha: str
+    secondary_dosha: str = ""
     sunrise: time | None = None
     sunset: time | None = None
     approximate_location: bool = False
 
 
-ENGINE_VERSION = "2.0.0"
+ENGINE_VERSION = "3.0.0"
+DOSHAS = ("vata", "pitta", "kapha")
+_TEMPLATES_PATH = Path(__file__).resolve().parent / "data" / "routine_templates.json"
+
+
+@lru_cache(maxsize=1)
+def dosha_focus() -> dict:
+    """One-line daily focus per dosha (data/routine_templates.json)."""
+    return json.loads(_TEMPLATES_PATH.read_text(encoding="utf-8")).get("dosha_focus", {})
+
+
+def dosha_personalization(user) -> dict:
+    """What the routine is tuned to, from the user's latest dosha assessment."""
+    profile = getattr(user, "dosha_profile", None)
+    dominant = (getattr(profile, "dominant_dosha", "") or "") if profile else ""
+    if dominant not in DOSHAS:
+        return {"assessed": False, "dominant": "", "secondary": "", "classification": "", "percentages": {},
+                "focus": "", "secondary_focus": ""}
+    secondary = getattr(profile, "secondary_dosha", "") or ""
+    secondary = secondary if secondary in DOSHAS and secondary != dominant else ""
+    counts = {d: (getattr(profile, "vikriti_scores", None) or {}).get(d, 0) or 0 for d in DOSHAS}
+    total = sum(counts.values())
+    percentages = {d: round(c * 100 / total) for d, c in counts.items()} if total else {}
+
+    classification = ""
+    assessments = getattr(user, "dosha_assessments", None)
+    latest = assessments.order_by("-created_at").first() if assessments is not None else None
+    if latest is not None:
+        classification = (latest.results or {}).get("classification", "")
+    classification = classification or ("dual" if secondary else "single")
+
+    return {"assessed": True, "dominant": dominant, "secondary": secondary, "classification": classification,
+            "percentages": percentages, "focus": dosha_focus().get(dominant, ""),
+            "secondary_focus": dosha_focus().get(secondary, "") if secondary else ""}
 
 
 def load_templates() -> list[dict]:
@@ -66,8 +102,7 @@ def build_routine(
     temp = current.get("temp")
     humidity = current.get("humidity")
 
-    profile = getattr(user, "dosha_profile", None)
-    dominant = (profile.dominant_dosha if profile else "") or ""
+    personalization = dosha_personalization(user)
 
     ctx = RoutineContext(
         date=day,
@@ -76,7 +111,8 @@ def build_routine(
         local_time=local_now.strftime("%H:%M"),
         temperature_c=temp,
         humidity=humidity,
-        dominant_dosha=dominant or settings.DINACHARYA_DEFAULT_DOSHA,
+        dominant_dosha=personalization["dominant"],
+        secondary_dosha=personalization["secondary"],
         sunrise=sunrise,
         sunset=sunset,
         approximate_location=lat is None,
@@ -95,6 +131,7 @@ def build_routine(
         "engine_version": ENGINE_VERSION,
         "approximate_location": ctx.approximate_location,
         "kala": {"name": ctx.kala_name, "local_time": ctx.local_time},
+        "personalization": personalization,
         "activities": activities,
     }
 
@@ -112,6 +149,7 @@ def persist_routine(user, routine: dict) -> None:
             "inputs_snapshot": {
                 "kala": routine["kala"],
                 "approximate_location": routine["approximate_location"],
+                "personalization": routine.get("personalization", {}),
             },
         },
     )
@@ -128,6 +166,7 @@ def persist_routine(user, routine: dict) -> None:
             reasons=item.get("reasons", []),
             citations=item.get("citations", []),
             dosha_target=item.get("dosha_target", ""),
+            personalized=item.get("personalized", False),
             order=item["order"],
         )
     return rec
@@ -147,14 +186,26 @@ def _render(template: dict, ctx: RoutineContext) -> dict | None:
     threshold = template.get("above_temperature_c")
     if threshold is not None and (ctx.temperature_c is None or ctx.temperature_c <= threshold):
         return None
+    user_doshas = [d for d in (ctx.dominant_dosha, ctx.secondary_dosha) if d]
+    only_for = template.get("doshas") or []
+    if only_for and not set(only_for) & set(user_doshas):
+        return None
+    dosha_override = (template.get("dosha_overrides") or {}).get(ctx.dominant_dosha, {})
     merged = {
         **template,
         **(template.get("season_overrides") or {}).get(ctx.season, {}),
-        **(template.get("dosha_overrides") or {}).get(ctx.dominant_dosha, {}),
+        **dosha_override,
     }
 
     def fill(text: str) -> str:
-        return (text or "").replace("{dosha}", ctx.dominant_dosha)
+        return (text or "").replace("{dosha}", ctx.dominant_dosha).replace("{secondary}", ctx.secondary_dosha)
+
+    tips = template.get("dosha_tips") or {}
+    tip_reasons = []
+    if tips.get(ctx.dominant_dosha):
+        tip_reasons.append(f"For your {ctx.dominant_dosha.title()}: {tips[ctx.dominant_dosha]}")
+    if ctx.secondary_dosha and tips.get(ctx.secondary_dosha):
+        tip_reasons.append(f"For your secondary {ctx.secondary_dosha.title()}: {tips[ctx.secondary_dosha]}")
 
     return {
         "time_of_day": merged["time_of_day"],
@@ -162,10 +213,11 @@ def _render(template: dict, ctx: RoutineContext) -> dict | None:
         "end": _resolve_time(merged["end"], ctx) if merged.get("end") else None,
         "title": fill(merged["title"]),
         "description": fill(merged.get("description", "")),
-        "reasons": [fill(r) for r in merged.get("reasons") or []],
+        "reasons": [fill(r) for r in merged.get("reasons") or []] + tip_reasons,
         "citations": merged.get("citations") or [],
         "dosha_target": fill(merged.get("dosha_target", "")),
         "order": merged.get("order", 0),
+        "personalized": bool(only_for or dosha_override or tip_reasons),
     }
 
 

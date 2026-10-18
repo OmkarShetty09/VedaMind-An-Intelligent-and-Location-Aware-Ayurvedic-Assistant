@@ -13,9 +13,23 @@ from django.http import StreamingHttpResponse
 
 logger = logging.getLogger(__name__)
 
+# Turns that are not an answer about Ayurveda: no "what not to take it with" panel.
+_NO_CAUTIONS_REASONS = {"greeting", "empty_kb"}
+
 
 def sse(event: str, data: dict) -> str:
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+
+def turn_cautions(user_message: str, answer: str, medications: list[str]) -> dict:
+    """Interaction cautions for the herbs in this turn; a lookup failure never breaks the answer."""
+    from apps.guardrails.cautions import GENERAL_NOTE, cautions_for
+
+    try:
+        return cautions_for(f"{user_message}\n{answer}", medications)
+    except Exception:
+        logger.exception("Cautions lookup failed")
+        return {"herbs": [], "items": [], "general": GENERAL_NOTE, "note": ""}
 
 
 def stream_chat(user_id, user_message, context_bundle, session_id, correlation_id, user_message_id=None):
@@ -53,6 +67,7 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                 tokens = 0
                 blocked = False
                 block_reason = ""
+                rag_reason = ""
                 guardrail_data = None
                 low_confidence = False
                 context_chip = None
@@ -90,6 +105,7 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                         tokens = event.get("tokens", 0)
                         # reason_code is also set on normal turns (greeting, empty_kb); only `blocked` means refused.
                         blocked = bool(event.get("blocked"))
+                        rag_reason = event.get("reason_code", "") or ""
                         if blocked:
                             block_reason = event.get("reason_code", "") or (guardrail_data or {}).get("reason_code", "")
                         low_confidence = low_confidence or bool(event.get("low_confidence"))
@@ -101,11 +117,16 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                         )
                         return
 
+                answer = "".join(content_parts)
+                cautions = {}
+                if answer and not blocked and not clarifying_question and rag_reason not in _NO_CAUTIONS_REASONS:
+                    cautions = turn_cautions(user_message, answer, context_bundle.get("medications") or [])
                 assistant = Message.objects.create(
                     conversation=conversation,
                     role="assistant",
-                    content="".join(content_parts) or clarifying_question or None,
+                    content=answer or clarifying_question or None,
                     source_citations=citations,
+                    cautions=cautions,
                     llm_model=model,
                     tokens=tokens,
                     block_reason=block_reason[:48],
@@ -128,6 +149,8 @@ def stream_chat(user_id, user_message, context_bundle, session_id, correlation_i
                     done_payload["context_chip"] = context_chip
                 if clarifying_question:
                     done_payload["clarifying_question"] = clarifying_question
+                if cautions:
+                    done_payload["cautions"] = cautions
                 yield sse("done", done_payload)
         except httpx.HTTPError as exc:
             logger.warning("RAG stream failed for %s: %s", correlation_id, exc)

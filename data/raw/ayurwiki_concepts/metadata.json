@@ -5,6 +5,7 @@
   "language": "en",
   "author": "Ayurwiki contributors",
   "source_url": "https://ayurwiki.org/",
+  "chapter_url_template": "https://ayurwiki.org/index.php?title=Special:Search&go=Go&search={chapter}",
   "description": "Core Ayurvedic concepts: doshas, agni, ama, dhatu, ojas, prakriti",
   "license": "CC BY-SA 4.0",
   "attribution": "Content from Ayurwiki (ayurwiki.org) under CC BY-SA 4.0",

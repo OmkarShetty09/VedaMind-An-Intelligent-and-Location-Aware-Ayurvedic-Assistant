@@ -1,9 +1,14 @@
+import { useId, useState } from "react";
+
 import { CitationMarker } from "./CitationMarker.jsx";
+import { InteractionCautions } from "./InteractionCautions.jsx";
 import { SourceCitation } from "./SourceCitation.jsx";
 import { normalizeMarkdown, renderInline } from "../../utils/formatText.jsx";
 import { parseCitations } from "../../utils/parseCitations.js";
 
 export function MessageBubble({ message }) {
+  const scope = useId();
+  const [openSource, setOpenSource] = useState(null);
   const isUser = message.role === "user";
   const showCitations = !isUser && !message.streaming && message.citations?.length > 0;
   const segments = showCitations ? parseCitations(normalizeMarkdown(message.content)) : null;
@@ -46,6 +51,7 @@ export function MessageBubble({ message }) {
                       key={i}
                       id={seg.id}
                       citation={message.citations.find((c) => c.id === seg.id)}
+                      onOpenSource={setOpenSource}
                     />
                   ) : (
                     <span key={i}>{renderInline(seg.value, `s${i}`)}</span>
@@ -68,7 +74,10 @@ export function MessageBubble({ message }) {
             </span>
           </div>
         )}
-        {message.citations?.length > 0 && <SourceCitation sources={message.citations} />}
+        {!message.streaming && <InteractionCautions cautions={message.cautions} />}
+        {message.citations?.length > 0 && (
+          <SourceCitation sources={message.citations} scope={scope} openId={openSource} onToggle={setOpenSource} />
+        )}
       </div>
     </div>
   );

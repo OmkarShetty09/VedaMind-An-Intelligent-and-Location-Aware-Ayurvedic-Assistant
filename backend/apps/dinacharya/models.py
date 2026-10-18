@@ -36,6 +36,7 @@ class RoutineActivity(models.Model):
     reasons = models.JSONField(default=list)
     citations = models.JSONField(default=list)  # [{"source": ..., "ref": ...}]
     dosha_target = models.CharField(max_length=10, blank=True)
+    personalized = models.BooleanField(default=False)  # changed or added because of the user's dosha
     order = models.PositiveIntegerField(default=0)
 
     class Meta:
@@ -50,8 +51,10 @@ class RoutineTemplate(models.Model):
 
     start / end: {"anchor": "sunrise"|"sunset"|"clock", "offset_minutes": int, "clock": "HH:MM",
                   "fallback_clock": "HH:MM" (used for sun anchors when the location is unknown)}
-    Text may contain {dosha}. season_overrides / dosha_overrides map a season / dosha key to fields to
-    replace (e.g. a different oil in winter, an earlier bedtime for kapha).
+    Text may contain {dosha} / {secondary}. season_overrides / dosha_overrides map a season / the user's
+    dominant dosha to fields to replace (e.g. a different oil in winter, dry massage for kapha).
+    dosha_tips adds a dosha-specific reason for the dominant and secondary dosha; doshas limits the
+    activity to users whose dominant or secondary dosha is listed (empty = everyone).
     """
 
     key = models.SlugField(max_length=60, unique=True)
@@ -70,6 +73,8 @@ class RoutineTemplate(models.Model):
     )
     season_overrides = models.JSONField(default=dict, blank=True)
     dosha_overrides = models.JSONField(default=dict, blank=True)
+    dosha_tips = models.JSONField(default=dict, blank=True)
+    doshas = models.JSONField(default=list, blank=True, help_text='Only for these doshas, e.g. ["kapha"]. Empty = all.')
 
     class Meta:
         ordering = ["order"]
@@ -79,5 +84,5 @@ class RoutineTemplate(models.Model):
 
     def as_dict(self) -> dict:
         fields = ("key", "order", "time_of_day", "start", "end", "title", "description", "reasons", "citations",
-                  "dosha_target", "above_temperature_c", "season_overrides", "dosha_overrides")
+                  "dosha_target", "above_temperature_c", "season_overrides", "dosha_overrides", "dosha_tips", "doshas")
         return {f: getattr(self, f) for f in fields}

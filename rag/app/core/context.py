@@ -3,7 +3,7 @@
 from app.config import get_settings
 from app.llm.token_budget import enforce_context_budget
 
-from .citations import Citations, SourceRef
+from .citations import Citations, source_ref
 from .errors import RetrievalError
 
 
@@ -19,13 +19,5 @@ def assemble(passages: list, citations: Citations) -> list[dict]:
     if not kept:
         raise RetrievalError("No context fits the budget.")
     for item in kept:
-        meta = item["metadata"]
-        citations.add(
-            SourceRef(
-                source=meta.get("source", "unknown"),
-                chapter=meta.get("chapter", ""),
-                verse=meta.get("verse", ""),
-                evidence_level=meta.get("evidence_level", "classical"),
-            )
-        )
+        citations.add(source_ref(item["metadata"], item["content"]))
     return kept

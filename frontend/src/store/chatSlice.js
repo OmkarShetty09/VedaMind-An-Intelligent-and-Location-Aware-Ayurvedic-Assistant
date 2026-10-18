@@ -9,7 +9,15 @@ export const deleteSession = createAsyncThunk("chat/deleteSession", async (id) =
   return id;
 });
 
-const META_KEYS = ["citations", "blocked", "low_confidence", "context_chip", "guardrail", "clarifying_question"];
+const META_KEYS = [
+  "citations",
+  "cautions",
+  "blocked",
+  "low_confidence",
+  "context_chip",
+  "guardrail",
+  "clarifying_question",
+];
 
 /**
  * The assistant message for the turn in flight. Guardrail / citation / chip events arrive before
@@ -36,6 +44,7 @@ function fromServer(m) {
     role: m.role,
     content: m.content || "",
     citations: m.source_citations || [],
+    cautions: m.cautions || null,
     blocked: Boolean(m.block_reason) && !m.content,
     block_reason: m.block_reason || "",
   };

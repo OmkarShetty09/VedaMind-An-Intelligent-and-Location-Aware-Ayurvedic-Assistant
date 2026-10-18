@@ -17,7 +17,9 @@ function citationLabel(c) {
   return [c.source, c.ref].filter(Boolean).join(", ");
 }
 
-export function RoutineTimeline({ activities, seasonInfo }) {
+/** dosha: the engine's personalization ({dominant, secondary}) when the user has taken the assessment. */
+export function RoutineTimeline({ activities, seasonInfo, dosha }) {
+  const doshaLabel = dosha ? [dosha.dominant, dosha.secondary].filter(Boolean).join("-") : "";
   return (
     <div className="space-y-4">
       <RitucharyaSeasonBadge info={seasonInfo} />
@@ -36,12 +38,23 @@ export function RoutineTimeline({ activities, seasonInfo }) {
                 <div className="rounded-xl border border-line bg-surface p-4 shadow-soft transition-all duration-150 hover:shadow-card">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1">
-                      <p className="text-sm font-semibold text-text">{act.title}</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-semibold text-text">{act.title}</p>
+                        {act.personalized && doshaLabel && (
+                          <span className="rounded-full bg-brand/10 px-2 py-0.5 text-[10px] font-medium capitalize text-brand">
+                            For your {doshaLabel}
+                          </span>
+                        )}
+                      </div>
                       {act.description && (
                         <p className="mt-1 text-sm leading-relaxed text-text-muted">{act.description}</p>
                       )}
                       {act.reasons?.length > 0 && (
-                        <p className="mt-1.5 text-xs italic text-text-faint">{act.reasons.join(" ")}</p>
+                        <ul className="mt-1.5 space-y-0.5 text-xs italic text-text-faint">
+                          {act.reasons.map((r, j) => (
+                            <li key={j}>{r}</li>
+                          ))}
+                        </ul>
                       )}
                     </div>
                     <span className="shrink-0 rounded-lg bg-brand-50 px-2.5 py-1 text-xs font-medium text-brand">

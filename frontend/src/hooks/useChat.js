@@ -72,6 +72,7 @@ export function useChat() {
               guardrail: data?.guardrail,
               context_chip: data?.context_chip,
               clarifying_question: data?.clarifying_question,
+              cautions: data?.cautions,
               question: text,
             })
           );

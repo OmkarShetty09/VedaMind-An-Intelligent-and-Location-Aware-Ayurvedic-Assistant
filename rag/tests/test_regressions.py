@@ -238,3 +238,19 @@ def test_secondary_review_skipped_when_no_herb_is_involved(monkeypatch):
 
     events = [json.loads(e[6:]) for e in orchestrator.run("what is a good morning routine", {"medications": ["x"]})]
     assert next(e for e in events if e["type"] == "done")["blocked"] is False
+
+
+def test_citations_carry_title_link_passage_and_references():
+    citations = Citations()
+    text = "Ashwagandha is a rasayana. See https://pubmed.ncbi.nlm.nih.gov/123/ and https://ayurwiki.org/x."
+    assemble([Passage("c0", text, {"source": "ayurwiki_herbs", "chapter": "Withania  somnifera"}, 1.0),
+              Passage("c1", "Langhana for jwara.", {"source": "ashtanga_hridaya", "chapter": "Jwara"}, 0.9)],
+             citations)
+    herbs, classical = citations.to_payload()
+    assert herbs["title"].startswith("Ayurwiki Herbs")
+    assert herbs["url"] == "https://ayurwiki.org/index.php?title=Special:Search&go=Go&search=Withania+somnifera"
+    assert herbs["excerpt"] == text
+    assert herbs["references"] == ["https://pubmed.ncbi.nlm.nih.gov/123/", "https://ayurwiki.org/x"]
+    assert herbs["license"] == "CC BY-SA 4.0"
+    # No public URL for this corpus: no link, but the full passage is still there to read.
+    assert classical["url"] == "" and classical["excerpt"] == "Langhana for jwara."

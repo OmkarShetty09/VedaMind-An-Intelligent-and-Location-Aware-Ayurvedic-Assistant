@@ -174,9 +174,6 @@ NOMINATIM_REVERSE_URL = env("NOMINATIM_REVERSE_URL", default="https://nominatim.
 GEOCODER_USER_AGENT = env("GEOCODER_USER_AGENT", default="VedaMind/1.0 (student project)")
 EXTERNAL_HTTP_TIMEOUT_SECONDS = env.float("EXTERNAL_HTTP_TIMEOUT_SECONDS", default=5.0)
 
-# Dosha used for routines before the user has taken the quiz.
-DINACHARYA_DEFAULT_DOSHA = env("DINACHARYA_DEFAULT_DOSHA", default="vata")
-
 # ---- Accounts created by `seed_demo_data` / `create_superuser` (skipped when unset) ----
 ADMIN_EMAIL = env("DEMO_EMAIL", default="")
 ADMIN_PASSWORD = env("DEMO_PASSWORD", default="")

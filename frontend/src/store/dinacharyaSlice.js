@@ -1,6 +1,7 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 
 import { dinacharyaApi } from "../api/dinacharya.js";
+import { submitQuiz } from "./doshaSlice.js";
 
 export const loadRoutine = createAsyncThunk("dinacharya/load", async () => {
   try {
@@ -22,6 +23,10 @@ const dinacharyaSlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // A new assessment changes the routine: reload it next time the Dinacharya page is opened.
+      .addCase(submitQuiz.fulfilled, (state) => {
+        state.status = "idle";
+      })
       .addCase(loadRoutine.pending, (state) => {
         state.status = "loading";
       })

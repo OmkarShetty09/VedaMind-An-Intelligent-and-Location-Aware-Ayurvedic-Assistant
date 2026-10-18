@@ -7,7 +7,7 @@ class MessageSerializer(serializers.ModelSerializer):
     class Meta:
         model = Message
         fields = [
-            "id", "role", "content", "source_citations",
+            "id", "role", "content", "source_citations", "cautions",
             "guardrail_decision", "llm_model", "tokens", "block_reason", "created_at",
         ]
 

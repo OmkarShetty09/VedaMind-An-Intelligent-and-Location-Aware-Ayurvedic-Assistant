@@ -18,7 +18,7 @@ export function DinacharyaPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="page-title">Dinacharya</h1>
-          <p className="page-subtitle">Your daily routine, tuned to your time, season, and weather.</p>
+          <p className="page-subtitle">Your daily routine, built for your dosha and tuned to your time, season and weather.</p>
         </div>
         <LocationStatusPill permission={!coords && weather ? "manual" : permission} />
       </div>

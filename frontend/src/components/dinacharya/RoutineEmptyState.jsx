@@ -5,7 +5,7 @@ export function RoutineEmptyState({ onRegenerate }) {
     <EmptyState
       icon="🌤️"
       title="No routine yet"
-      description="Generate your personalized daily routine based on your local time, season, and weather."
+      description="Generate your daily routine, built from your dosha assessment, local time, season and weather."
       action={
         <button
           onClick={onRegenerate}
